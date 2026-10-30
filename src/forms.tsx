@@ -3,7 +3,7 @@ import { ArrowRight, Check, Copy, FilePlus2, GitMerge, Info, Link2, LoaderCircle
 import { api, ApiError, date, dayKey, duration, errorMessage, json, key, SOURCES, time } from './api';
 import { Alert, Avatar, Field, FileInput, Modal } from './ui';
 import type { Candidate, Interview, InterviewRequest, Job, Match, Submission, User } from './types';
-import { JOB_BRANDS, EMPLOYMENT_TYPES, jobExpired } from './jobs';
+import { jobExpired } from './jobs';
 
 function DuplicateChoice({ matches, target, setTarget, resolution, setResolution, reason, setReason }: {
   matches: Match[]; target: string; setTarget: (v: string) => void; resolution: string; setResolution: (v: string) => void; reason: string; setReason: (v: string) => void;
@@ -90,33 +90,7 @@ export function UpdateLinkForm({ candidate, onClose, onCreated }: { candidate: C
   </Modal>;
 }
 
-export function JobForm({ existing, onClose, onSaved }: { existing?: Job; onClose: () => void; onSaved: () => void }) {
-  const [error, setError] = useState(''), [busy, setBusy] = useState(false), [status, setStatus] = useState(existing?.status || 'open');
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); if (busy) return;
-    const data = Object.fromEntries(new FormData(event.currentTarget)); setBusy(true); setError('');
-    try { await api(existing ? `/jobs/${existing.id}` : '/jobs', { method: existing ? 'PATCH' : 'POST', body: json({ ...data, ...(existing?.revision ? { expectedRevision: existing.revision } : {}) }) }); onSaved(); }
-    catch (error) { setError(errorMessage(error)); } finally { setBusy(false); }
-  }
-  return <Modal title={existing ? 'Chỉnh sửa JD' : 'Tạo JD tuyển dụng'} subtitle="Admin và HR quản lý nội dung. Ứng viên xem JD trên trang tuyển dụng công khai." onClose={() => !busy && onClose()} wide>
-    <form onSubmit={submit}><div className="modal-body"><div className="form-grid">
-      <Field label="Tên vị trí" className="full" required><input name="title" required minLength={2} maxLength={120} defaultValue={existing?.title} placeholder="Ví dụ: Nhân viên Content Marketing"/></Field>
-      <Field label="Bộ phận" required><input name="department" required maxLength={120} defaultValue={existing?.department} placeholder="Marketing"/></Field>
-      <Field label="Ngành hàng"><select name="businessLine" defaultValue={existing?.business_line || ''}><option value="">Chung · Super Net</option>{JOB_BRANDS.map(brand => <option value={brand.id} key={brand.id}>{brand.name} · {brand.category}</option>)}</select></Field>
-      <Field label="Số lượng cần tuyển" required><input name="openings" type="number" min={1} max={1000} defaultValue={existing?.openings || 1} required/></Field>
-      <Field label="Hình thức làm việc"><select name="employmentType" defaultValue={existing?.employment_type || 'Toàn thời gian'}>{EMPLOYMENT_TYPES.map(type => <option key={type}>{type}</option>)}</select></Field>
-      <Field label="Địa điểm làm việc" className="full" required><input name="location" required maxLength={200} defaultValue={existing?.location || ''} placeholder="Địa chỉ văn phòng / khu vực làm việc"/></Field>
-      <Field label="Mức lương"><input name="salaryRange" maxLength={200} defaultValue={existing?.salary_range || ''} placeholder="Ví dụ: 10–15 triệu / tháng hoặc Thỏa thuận"/></Field>
-      <Field label="Thời gian làm việc"><input name="workingHours" maxLength={1000} defaultValue={existing?.working_hours || ''} placeholder="Ví dụ: Thứ Hai đến thứ Sáu, 8:30–17:30"/></Field>
-    </div><h3 className="form-section-title"><FilePlus2 size={17}/>Nội dung JD</h3>
-    <Field label="Mô tả công việc" required hint="Viết mỗi ý một dòng; nội dung xuống dòng được giữ trên trang JD."><textarea name="description" required minLength={20} maxLength={10000} rows={6} defaultValue={existing?.description} placeholder="Các nhiệm vụ và trách nhiệm chính của vị trí…"/></Field>
-    <Field label="Yêu cầu ứng viên"><textarea name="requirements" maxLength={10000} rows={5} defaultValue={existing?.requirements || ''} placeholder="Kinh nghiệm, kỹ năng, kiến thức cần có…"/></Field>
-    <Field label="Quyền lợi"><textarea name="benefits" maxLength={10000} rows={5} defaultValue={existing?.benefits || ''} placeholder="Thu nhập, phúc lợi, cơ hội phát triển…"/></Field>
-    <div className="form-grid"><Field label="Hạn nhận hồ sơ" hint="Để trống nếu chưa chốt; tin quá hạn sẽ tự ẩn và ngừng nhận hồ sơ."><input name="applicationDeadline" type="date" defaultValue={existing?.application_deadline || ''}/></Field><Field label="Trạng thái hiển thị"><select name="status" value={status} onChange={event => setStatus(event.target.value)}><option value="open">Đang tuyển · Hiển thị công khai</option><option value="closed">Tạm dừng · Chưa hiển thị</option></select></Field></div>
-    <div className="info-note"><ShieldCheck size={18}/><span>{status === 'open' ? 'Sau khi lưu, JD còn hạn được hiển thị ngay trên trang tuyển dụng để ứng viên đọc và ứng tuyển.' : 'Tin đang ẩn với ứng viên. Admin và HR vẫn có thể chỉnh sửa và mở lại.'}</span></div>{error && <Alert>{error}</Alert>}
-    </div><footer className="modal-foot"><span>Nội dung được lưu trong database và ghi lịch sử chỉnh sửa</span><div><button type="button" className="button secondary" disabled={busy} onClick={onClose}>Hủy</button><button className="button primary" disabled={busy}><Check size={17}/>{busy ? 'Đang lưu…' : status === 'open' ? 'Lưu & đăng JD' : 'Lưu JD'}</button></div></footer></form>
-  </Modal>;
-}
+export { JobForm } from './job-editor';
 
 export function InterviewForm({ candidates, users, initialId, request, existing, onClose, onSaved }: { candidates: Candidate[]; users: User[]; initialId?: string; request?: InterviewRequest; existing?: Interview; onClose: () => void; onSaved: () => void }) {
   const initialCandidate = existing?.candidate_id || request?.candidate_id || initialId || '';
@@ -130,20 +104,22 @@ export function InterviewForm({ candidates, users, initialId, request, existing,
   const end = day && startTime ? new Date(+new Date(`${day}T${startTime}:00+07:00`) + minutes * 60000) : null;
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (busy) return; const data = Object.fromEntries(new FormData(event.currentTarget)); setBusy(true); setError('');
-    try { await api(existing ? `/interviews/${existing.id}` : '/interviews', { method: existing ? 'PATCH' : 'POST', body: json({ ...data, applicationId, requestId: request?.id || existing?.request_id || '', startsAt: new Date(`${day}T${startTime}:00+07:00`).toISOString(), durationMinutes: minutes }) }); onSaved(); } catch (err) { setError(errorMessage(err)); } finally { setBusy(false); }
+    try { await api(existing ? `/interviews/${existing.id}` : '/interviews', { method: existing ? 'PATCH' : 'POST', body: json({ ...data, contactConfirmed: data.contactConfirmed === 'true', applicationId, requestId: request?.id || existing?.request_id || '', startsAt: new Date(`${day}T${startTime}:00+07:00`).toISOString(), durationMinutes: minutes }) }); onSaved(); } catch (err) { setError(errorMessage(err)); } finally { setBusy(false); }
   }
-  return <Modal title={existing ? 'Đổi lịch phỏng vấn' : 'Đặt lịch phỏng vấn'} subtitle="HR xác nhận thời gian với ứng viên, chọn thời lượng và lưu vào dashboard." onClose={() => !busy && onClose()}><form onSubmit={submit}><div className="modal-body form-grid">
-    {request && <div className="info-note full"><ShieldCheck size={18}/><span>Sếp {request.requested_by_name} đã chọn CV phiên bản {request.document_version}. {request.notes}</span></div>}
+  return <Modal title={existing ? 'Đổi lịch phỏng vấn' : 'Đặt lịch phỏng vấn'} subtitle="Chọn ngày, giờ, thời lượng và người tham gia phỏng vấn." onClose={() => !busy && onClose()}><form onSubmit={submit}><div className="modal-body form-grid">
+    {request && <div className="info-note full"><ShieldCheck size={18}/><span>Yêu cầu từ {request.requested_by_name} · CV phiên bản {request.document_version}. {request.notes}</span></div>}
     <Field label="Ứng viên" className="full" required><select value={candidateId} disabled={!!request || !!existing} onChange={e => { setCandidateId(e.target.value); setApplicationId(candidates.find(c => c.id === e.target.value)?.applications.find(a => !['hired','offered','rejected'].includes(a.stage))?.id || ''); }} required><option value="">Chọn ứng viên</option>{candidates.map(c => <option value={c.id} key={c.id}>{c.full_name || 'Chưa có tên'}</option>)}</select></Field>
     <Field label="Lượt ứng tuyển" className="full" required><select value={applicationId} onChange={e => setApplicationId(e.target.value)} disabled={!!request || !!existing} required><option value="">Chọn vị trí</option>{selected?.applications.filter(a => !['hired','offered','rejected'].includes(a.stage)).map(a => <option key={a.id} value={a.id}>{a.job_title}</option>)}</select></Field>
     <Field label="Ngày phỏng vấn" required><input type="date" value={day} min={dayKey()} onChange={e => setDay(e.target.value)} required/></Field>
     <Field label="Giờ bắt đầu (UTC+7)" required><input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} required/></Field>
     <Field label="Thời lượng phỏng vấn" required><select value={minutes} onChange={e => setMinutes(Number(e.target.value))}>{[15,30,45,60,90,120,150,180,240].map(n => <option key={n} value={n}>{n} phút</option>)}</select></Field>
     <div className="end-time-preview"><Clock3 size={19}/><span>Giờ kết thúc dự kiến<strong>{end && !Number.isNaN(+end) ? time(end.toISOString()) : '—'}</strong></span></div>
-    <Field label="Người phỏng vấn" required><select name="interviewerId" defaultValue={existing?.interviewer_id || request?.requested_by || ''} required><option value="">Chọn người phỏng vấn</option>{users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</select></Field>
+    <Field label="Người phỏng vấn" required><select name="interviewerId" defaultValue={existing?.interviewer_id || request?.preferred_interviewer_id || request?.requested_by || ''} required><option value="">Chọn người phỏng vấn</option>{['interviewer','boss','admin','hr'].map(role => <optgroup key={role} label={role === 'interviewer' ? 'Người phỏng vấn' : role === 'hr' ? 'Nhân sự' : 'Quản lý'}>{users.filter(member => member.role === role && member.active !== false).map(member => <option key={member.id} value={member.id}>{member.name}</option>)}</optgroup>)}</select></Field>
     <Field label="Hình thức"><select name="mode" defaultValue={existing?.mode || 'Online'}><option>Online</option><option>Trực tiếp</option><option>Điện thoại</option></select></Field>
     <Field label="Địa điểm / Liên kết họp" className="full" required><input name="location" required minLength={2} maxLength={1000} defaultValue={existing?.location} placeholder="Phòng họp hoặc liên kết Google Meet…"/></Field>
+    {selected?.consent_status === 'pending' && <section className="contact-confirmation full" key={candidateId}><h3>Ghi nhận trao đổi với ứng viên</h3><Field label="Nội dung đã trao đổi" required><textarea name="contactEvidence" required minLength={10} maxLength={1000} defaultValue={existing?.contact_evidence || ''} placeholder="Ngày, kênh liên hệ và lịch đã thống nhất với ứng viên…"/></Field><label className="checkbox-line"><input type="checkbox" name="contactConfirmed" value="true" required defaultChecked={!!existing?.contact_evidence}/><span>Đã liên hệ ứng viên và thống nhất việc hẹn phỏng vấn.</span></label><p className="helper">Ghi nhận này chỉ lưu việc trao đổi lịch, không thay đổi trạng thái đồng ý xử lý dữ liệu.</p></section>}
+    {selected?.consent_status === 'withdrawn' && <div className="full"><Alert>Ứng viên đã rút lại sự đồng ý xử lý dữ liệu. Cần ghi nhận sự đồng ý mới trước khi tiếp tục.</Alert></div>}
     {existing && <Field label="Lý do đổi lịch" className="full" required><textarea name="reason" minLength={5} maxLength={1000} required placeholder="Ứng viên đề nghị đổi giờ, điều chỉnh người phỏng vấn…"/></Field>}
-    <div className="info-note full"><Info size={18}/><span>Lịch được cập nhật trên dashboard của HR và Sếp. Hệ thống kiểm tra trùng lịch của cả ứng viên và người phỏng vấn. Chưa gửi email tự động.</span></div>{error && <div className="full"><Alert>{error}</Alert></div>}
-  </div><footer className="modal-foot"><span>Giờ Việt Nam · UTC+7</span><button className="button primary" disabled={busy}>{busy ? <LoaderCircle size={17} className="spin"/> : <ArrowRight size={17}/>}Lưu lịch phỏng vấn</button></footer></form></Modal>;
+    <div className="info-note full"><Info size={18}/><span>Giờ kết thúc được tính theo thời lượng. Lịch trùng của ứng viên hoặc người phỏng vấn sẽ được báo để chọn giờ khác.</span></div>{error && <div className="full"><Alert>{error}</Alert></div>}
+  </div><footer className="modal-foot"><span>Giờ Việt Nam · UTC+7</span><button className="button primary" disabled={busy || selected?.consent_status === 'withdrawn'}>{busy ? <LoaderCircle size={17} className="spin"/> : <ArrowRight size={17}/>}Lưu lịch phỏng vấn</button></footer></form></Modal>;
 }

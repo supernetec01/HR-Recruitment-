@@ -30,33 +30,35 @@ Vào **Thành viên & phân quyền → Tạo tài khoản**:
 
 - Họ và tên, tên đăng nhập (3–50 ký tự: chữ không dấu/số/dấu chấm/gạch dưới/gạch ngang).
 - Email không bắt buộc. Nếu có thì cũng dùng email để đăng nhập.
-- Vai trò: **Quản trị viên**, **Sếp**, **HR**.
+- Vai trò: **Quản trị viên**, **Sếp**, **Người phỏng vấn**, **HR**.
 - Mật khẩu từ 12 ký tự; gửi riêng cho đúng nhân sự.
 
 Admin sửa tên/email/quyền, đặt mật khẩu mới, khóa/mở tài khoản từ danh sách. Khóa, đổi quyền hoặc mật khẩu thu hồi phiên đăng nhập cũ. Không thể tự khóa/hạ quyền Admin đang dùng.
 
-Tạo ít nhất một Sếp và một HR. Để thử hai vai trò, dùng trình duyệt hoặc cửa sổ riêng tư độc lập; các tab thông thường dùng chung cookie. Mỗi nhân sự đổi mật khẩu cá nhân tại trang này.
+Tạo tài khoản HR và Sếp/Người phỏng vấn theo nhu cầu. Để thử các vai trò, dùng trình duyệt hoặc cửa sổ riêng tư độc lập; các tab thông thường dùng chung cookie. Chỉ Admin thấy danh sách thành viên và bảng quyền. Nhân sự khác mở **Tài khoản → Tài khoản cá nhân** để đổi mật khẩu hoặc đăng xuất.
 
 ## Admin/HR tạo và chỉnh sửa JD
 
 1. Đăng nhập bằng tài khoản **Admin hoặc HR**, mở **Vị trí tuyển dụng → Tạo JD tuyển dụng**.
-2. Nhập tên vị trí, bộ phận, số lượng, hình thức và địa điểm. Chọn ngành hàng **Safestraps / JieLien / Baby tatto**, hoặc **Chung · Super Net**. Bổ sung mức lương và thời gian làm việc nếu có.
+2. Nhập tên công ty, tên vị trí, bộ phận, số lượng, hình thức và địa chỉ đầy đủ. Chọn ngành hàng **Safestraps / JieLien / Baby tatto**, hoặc **Chung · Super Net**. Bổ sung mức lương và thời gian làm việc nếu có.
 3. Điền **Mô tả công việc**, **Yêu cầu ứng viên**, **Quyền lợi**; mỗi ý một dòng. Hạn nhận hồ sơ có thể để trống.
-4. Chọn **Đang tuyển → Lưu & đăng JD** để ứng viên xem, hoặc **Tạm dừng → Lưu JD** khi nội dung chưa sẵn sàng.
+4. Trong **Cách thức ứng tuyển**, nhập hướng dẫn, email nhận CV, tiêu đề email và số Zalo. Chọn **Xem trước JD** để đọc toàn bộ nội dung. **Điền mẫu Content Marketing** lấy nội dung từ JD Super Net cung cấp; sửa các mục theo đợt tuyển trước khi lưu. Sau đó chọn **Đang tuyển → Lưu & đăng JD** để ứng viên xem, hoặc **Tạm dừng → Lưu JD** khi nội dung chưa sẵn sàng.
 5. Mỗi vị trí có nút **Chỉnh sửa JD**, **Xem JD** và chia sẻ liên kết. Có thể tạm dừng mà không xóa vị trí hay hồ sơ đã nhận. Tin quá hạn tự ẩn theo ngày UTC+7; muốn tuyển lại thì sửa/xóa hạn và mở lại. Nếu người khác sửa trước khi bạn lưu, tải lại vị trí để lấy bản mới.
 
-Sếp chỉ được xem, không được tạo/chỉnh sửa JD. Mọi thay đổi lưu vào database, có nhật ký người sửa và nội dung trước/sau.
+Sếp/Người phỏng vấn chỉ được xem, không được tạo/chỉnh sửa JD. Mọi thay đổi lưu vào database, có nhật ký người sửa và nội dung trước/sau.
+
+Ảnh minh họa: [Biểu mẫu JD](screenshots/jd-editor.png), [JD chi tiết theo tài liệu Super Net](screenshots/job-description.png).
 
 Trang công khai nằm tại `/tuyen-dung`: giới thiệu phụ kiện xe **Safestraps**, thiết bị âm thanh **JieLien**, Mẹ và Bé **Baby tatto**, rồi danh sách vị trí đang tuyển. Chọn vị trí → đọc JD → **Ứng tuyển ngay**; ứng viên không cần tài khoản. Mỗi JD có đường dẫn riêng `/tuyen-dung/:id` để gửi cho ứng viên. Tìm kiếm và bộ lọc giúp chọn đúng ngành hàng.
 
 Với máy chủ hiện tại, mở `http://192.168.1.5:5173/tuyen-dung`. Địa chỉ IP này dùng trong mạng nội bộ; ứng viên ngoài công ty cần domain/địa chỉ công khai được triển khai và truy cập được. Nếu trình duyệt HTTP không cho sao chép tự động, chọn nội dung ô liên kết rồi Ctrl+C.
 
-## HR nhận hồ sơ và Sếp chọn CV
+## HR nhận hồ sơ và chọn ứng viên phỏng vấn
 
 1. Admin/HR đăng JD tại **Vị trí tuyển dụng → Tạo JD tuyển dụng**. Không gian mới không có dữ liệu giả.
 2. HR dùng **Quản lý ứng viên → Thêm ứng viên / Upload CV**. Nhập những gì đã có, chọn nguồn, ngày nhận thực tế và vị trí; có thể lưu thiếu thông tin.
 3. CV mới cách ly. HR kiểm tra an toàn bằng quy trình bên ngoài rồi vào **CV & tài liệu → Ghi nhận kiểm tra** để ghi căn cứ. Chưa có quét virus tự động. Sếp sau đó xem PDF trực tiếp hoặc tải DOCX.
-4. Sếp mở hồ sơ, đọc CV trong **CV & tài liệu**. Về tab **Tổng quan** của hồ sơ → **Hẹn phỏng vấn**, chọn vị trí, phiên bản CV và ghi chú gửi HR.
+4. Sếp/Người phỏng vấn mở **Tổng quan** của hồ sơ → **Hẹn phỏng vấn**, chọn vị trí, phiên bản CV, **Người phỏng vấn đề xuất** và ghi chú gửi HR. Có thể gửi yêu cầu khi CV chưa được đánh dấu kiểm tra; tài liệu vẫn chờ kiểm tra và chưa mở/tải được cho đến khi ghi nhận kiểm tra. Danh sách CV không còn bị bỏ trống chỉ vì chưa kiểm tra.
 5. Yêu cầu được lưu cùng người chọn, thời điểm, CV và hiển thị tại dashboard/**Yêu cầu phỏng vấn**. Đây chưa phải giờ hẹn đã xác nhận hoặc quyết định tuyển dụng.
 
 Ứng viên tự gửi qua `/tuyen-dung`. Hồ sơ nghi trùng vào Chờ xác minh để HR xác nhận; không tự ghi đè hồ sơ/CV cũ. Link bổ sung do HR tạo có hạn và dùng một lần, thêm đúng hồ sơ. Link có hostname localhost chỉ dùng trên máy đang chạy ứng dụng; khi dùng chung cần mở qua hostname/IP/domain máy chủ.
@@ -64,12 +66,16 @@ Với máy chủ hiện tại, mở `http://192.168.1.5:5173/tuyen-dung`. Địa
 ## HR xếp lịch và dashboard
 
 1. HR đọc yêu cầu và liên hệ ứng viên thống nhất thời gian.
-2. Chọn **Liên hệ & xếp lịch** → ngày, giờ bắt đầu, **thời lượng** (ví dụ 45/90 phút), người phỏng vấn, hình thức, địa điểm/link họp.
+2. Chọn **Liên hệ & xếp lịch** → ngày, giờ bắt đầu, **thời lượng** (ví dụ 45/90 phút), người phỏng vấn, hình thức, địa điểm/link họp. Người được đề xuất được chọn sẵn; có thể đổi sang người khác trong danh sách.
 3. Hệ thống tính giờ kết thúc và chặn trùng cả ứng viên và người phỏng vấn; các buổi trong tương lai, cùng ngày, 15–240 phút.
 4. **Tổng quan** và **Lịch phỏng vấn** có bảng theo ngày/khung giờ, số phút, ứng viên/vị trí/người phỏng vấn. Chọn ngày hoặc Ngày trước/Ngày sau/Hôm nay. Tất cả theo UTC+7.
 5. **Đổi lịch** cần lý do; hủy lịch đưa yêu cầu về chờ HR; chỉ hoàn thành sau giờ bắt đầu. Xem lịch sử trong hồ sơ.
 
 Yêu cầu/lịch tự cập nhật mỗi 30 giây hoặc khi quay lại tab; dashboard có nút cập nhật. Đây là thông báo trong website, chưa gửi email tự động.
+
+Với hồ sơ **chưa xác nhận dữ liệu**, HR đã liên hệ có thể điền **Nội dung đã trao đổi** (ngày/kênh liên hệ và lịch thống nhất), đánh dấu **Đã liên hệ ứng viên và thống nhất việc hẹn phỏng vấn**, rồi lưu lịch. Thông tin trao đổi lưu cùng người ghi nhận/thời điểm, còn trạng thái đồng ý vẫn giữ nguyên. Đây là ghi nhận lịch làm việc. Nếu ứng viên đã **rút lại sự đồng ý**, cần có sự đồng ý mới và ghi căn cứ trong hồ sơ trước khi tiếp tục. Không đánh dấu đã đồng ý thay ứng viên chỉ để vượt bước đặt lịch.
+
+Ảnh quy trình dùng tài khoản/ứng viên kiểm thử: [Yêu cầu phỏng vấn](screenshots/interview-request.png), [Ghi nhận trao đổi và đặt lịch](screenshots/contact-scheduling.png).
 
 ## Tác vụ và debug VS Code
 
@@ -130,7 +136,7 @@ Các máy khác dùng hostname/IP máy chủ và cổng 3000, không dùng local
 | Bảng màu Super Net | `src/internal.css` |
 | Hồ sơ, xem CV | `src/detail.tsx` |
 | Biểu mẫu, thời lượng | `src/forms.tsx` |
-| Quản trị JD, nội dung công việc | `src/jobs.tsx`, `src/forms.tsx` |
+| Quản trị JD, xem trước, mẫu Content Marketing | `src/job-editor.tsx`, `src/jobs.tsx`, `src/jd-template.ts` |
 | Tuyển dụng công khai, trang JD | `src/public.tsx`, `src/job-page.tsx`, `src/careers.css` |
 | API hồ sơ/xác thực | `server/app.mjs` |
 | API JD, quyền sửa, hạn nhận hồ sơ | `server/jobs.mjs` |
@@ -148,9 +154,11 @@ Các máy khác dùng hostname/IP máy chủ và cổng 3000, không dùng local
 | Cổng bị chiếm | Dừng phiên dev/demo/debug/test cũ trước khi chạy lại. |
 | Đăng nhập HTTP không giữ phiên | Không bật NODE_ENV=production khi thử HTTP trực tiếp. |
 | Không xem được CV | HR kiểm tra an toàn; PDF xem trực tiếp, DOCX tải xuống. |
+| CV PDF hợp lệ bị từ chối vì dòng trống đầu file | Đã hỗ trợ khoảng trắng/BOM trước header PDF; giữ nguyên tệp, chọn lại và tải lên sau khi cập nhật. |
+| Danh sách CV trong Hẹn phỏng vấn bị trống | Cập nhật bản mới; CV chờ kiểm tra cũng được chọn gửi yêu cầu. Hồ sơ chưa có CV cần bổ sung file. |
 | JD không hiện công khai | Kiểm tra trạng thái Đang tuyển, hạn nhận hồ sơ và bộ lọc ngành hàng. |
 | Không thấy nút tạo/sửa JD | Đăng nhập bằng Admin/HR; Sếp chỉ được xem. |
-| Không đặt được lịch | Kiểm tra liên hệ/consent, thời gian tương lai, cùng ngày, thời lượng và xung đột. |
+| Không đặt được lịch | Kiểm tra email/điện thoại, ghi nhận trao đổi nếu chưa xác nhận dữ liệu, thời gian tương lai, cùng ngày, thời lượng và xung đột. |
 
 AI, email, phê duyệt offer, quét virus tự động và các giới hạn còn lại: xem [README](../README.md). Hướng dẫn Windows/macOS chưa được kiểm chứng trên máy Windows/macOS thật.
 

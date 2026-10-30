@@ -88,7 +88,7 @@ test('filters, pagination, assignment and demo read-only Boss work through the U
   await dialog.getByLabel('HR phụ trách').selectOption({label:'Minh Anh'});
   await dialog.getByRole('button',{name:'Xác nhận phân công'}).click();
   await expect(page.getByRole('status')).toContainText('Đã phân công 1/1');
-  await page.locator('.main-nav').getByRole('button',{name:'Thành viên & phân quyền'}).click();
+  await page.locator('.main-nav').getByRole('button',{name:'Tài khoản',exact:true}).click();
   await page.getByLabel('Vai trò trải nghiệm').selectOption('boss');
   await expect(page.locator('.sidebar-user')).toContainText('Alex Chen');
   await page.locator('.main-nav').getByRole('button',{name:/Quản lý ứng viên/}).click();

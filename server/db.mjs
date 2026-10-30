@@ -33,7 +33,7 @@ export function openDatabase(directory, demo = false) {
   db.exec(`PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE,
-      role TEXT NOT NULL CHECK(role IN ('admin','boss','hr')), password_hash TEXT, is_demo INTEGER NOT NULL DEFAULT 0
+      role TEXT NOT NULL CHECK(role IN ('admin','boss','hr','interviewer')), password_hash TEXT, is_demo INTEGER NOT NULL DEFAULT 0
     );
     CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), expires_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS jobs (
@@ -88,7 +88,7 @@ export function openDatabase(directory, demo = false) {
   `);
   // Additive migrations preserve existing applicants, documents and staff accounts.
   const jobColumns = new Set(db.prepare('PRAGMA table_info(jobs)').all().map(c => c.name));
-  for (const column of ['requirements','benefits','working_hours','salary_range','business_line','application_deadline','updated_at']) {
+  for (const column of ['requirements','benefits','working_hours','salary_range','business_line','application_deadline','updated_at','company_name','application_instructions','application_email','application_email_subject','application_zalo']) {
     if (!jobColumns.has(column)) db.exec(`ALTER TABLE jobs ADD COLUMN ${column} TEXT NOT NULL DEFAULT ''`);
   }
   if (!jobColumns.has('revision')) db.exec('ALTER TABLE jobs ADD COLUMN revision INTEGER NOT NULL DEFAULT 1');
@@ -96,6 +96,22 @@ export function openDatabase(directory, demo = false) {
   const userColumns = new Set(db.prepare('PRAGMA table_info(users)').all().map(c => c.name));
   if (!userColumns.has('username')) db.exec('ALTER TABLE users ADD COLUMN username TEXT');
   if (!userColumns.has('active')) db.exec('ALTER TABLE users ADD COLUMN active INTEGER NOT NULL DEFAULT 1');
+  // SQLite CHECK constraints require rebuilding the table; preserve IDs, hashes and all references.
+  if (!db.prepare("SELECT sql FROM sqlite_master WHERE name='users'").get().sql.includes("'interviewer'")) {
+    db.exec('PRAGMA foreign_keys=OFF');
+    try { transaction(db, () => {
+      db.exec(`CREATE TABLE users_with_interviewer (
+        id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE,
+        role TEXT NOT NULL CHECK(role IN ('admin','boss','hr','interviewer')), password_hash TEXT,
+        is_demo INTEGER NOT NULL DEFAULT 0, username TEXT, active INTEGER NOT NULL DEFAULT 1
+      );
+      INSERT INTO users_with_interviewer(id,name,email,role,password_hash,is_demo,username,active)
+        SELECT id,name,email,role,password_hash,is_demo,username,active FROM users;
+      DROP TABLE users;
+      ALTER TABLE users_with_interviewer RENAME TO users;`);
+      if (db.prepare('PRAGMA foreign_key_check').all().length) throw new Error('User role migration failed referential integrity check.');
+    }); } finally { db.exec('PRAGMA foreign_keys=ON'); }
+  }
   db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS users_username ON users(username COLLATE NOCASE) WHERE username IS NOT NULL;
     CREATE TABLE IF NOT EXISTS interview_requests (
       id TEXT PRIMARY KEY, application_id TEXT NOT NULL REFERENCES applications(id),
@@ -107,6 +123,11 @@ export function openDatabase(directory, demo = false) {
     CREATE UNIQUE INDEX IF NOT EXISTS one_pending_interview_request ON interview_requests(application_id) WHERE status='pending';
   `);
   const interviewColumns = new Set(db.prepare('PRAGMA table_info(interviews)').all().map(c => c.name));
+  if (!interviewColumns.has('contact_evidence')) db.exec("ALTER TABLE interviews ADD COLUMN contact_evidence TEXT NOT NULL DEFAULT ''");
+  if (!interviewColumns.has('contacted_at')) db.exec('ALTER TABLE interviews ADD COLUMN contacted_at TEXT');
+  if (!interviewColumns.has('contacted_by')) db.exec('ALTER TABLE interviews ADD COLUMN contacted_by TEXT REFERENCES users(id)');
+  const requestColumns = new Set(db.prepare('PRAGMA table_info(interview_requests)').all().map(c => c.name));
+  if (!requestColumns.has('preferred_interviewer_id')) db.exec('ALTER TABLE interview_requests ADD COLUMN preferred_interviewer_id TEXT REFERENCES users(id)');
   if (!interviewColumns.has('request_id')) db.exec('ALTER TABLE interviews ADD COLUMN request_id TEXT REFERENCES interview_requests(id)');
   db.exec("CREATE UNIQUE INDEX IF NOT EXISTS one_booking_per_request ON interviews(request_id) WHERE status='scheduled' AND request_id IS NOT NULL");
   // Preserve early development databases while allowing a new application after a completed/rejected one.

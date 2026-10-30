@@ -50,6 +50,36 @@
 .jd-content section + section { border-top: 1px solid #e6eef4; margin-top: 27px; padding-top: 25px; }
 .jd-content h2, .jd-apply-note h2 { font-size: calc(17px * var(--text-scale)); font-weight: 600; color: #275c78; margin: 0 0 13px; }
 .jd-content p, .jd-apply-note p { white-space: pre-wrap; line-height: 1.95; font-size: calc(12px * var(--text-scale)); color: #607f94; overflow-wrap: anywhere; }
+.jd-bullets { padding-left: 21px; margin: 0; color: #607f94; font-size: calc(12px * var(--text-scale)); line-height: 1.95; }
+.jd-bullets li { padding-left: 3px; margin-bottom: 9px; overflow-wrap: anywhere; }
+.jd-bullets li::marker { color: #1688ae; }
+.jd-general-info { display: grid; grid-template-columns: 1fr 1fr; gap: 17px 24px; margin: 0; }
+.jd-general-info .full { grid-column: 1 / -1; }
+.jd-general-info dt, .jd-application-contacts dt { color: #7a94a6; font-size: calc(10px * var(--text-scale)); margin-bottom: 5px; }
+.jd-general-info dd, .jd-application-contacts dd { margin: 0; color: #426b84; font-size: calc(12px * var(--text-scale)); line-height: 1.85; white-space: pre-wrap; overflow-wrap: anywhere; }
+.jd-salary-emphasis { background: #edf8fd; padding: 12px 15px; border-radius: 7px; margin-bottom: 16px; }
+.jd-application-contacts { margin: 17px 0; display: grid; gap: 15px; }
+.jd-application-contacts a { color: #087ea5; text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
+.modal.jd-editor-modal { width: min(960px,calc(100vw - 32px)); max-width: 960px; max-height: calc(100dvh - 40px); display: flex; flex-direction: column; overflow: hidden; }
+.jd-editor { display: flex; flex-direction: column; min-height: 0; }
+.jd-editor-modal > .modal-head, .jd-editor > .jd-editor-tools, .jd-editor > .modal-foot { flex-shrink: 0; }
+.jd-editor > .modal-body { overflow-y: auto; min-height: 0; overscroll-behavior: contain; }
+.jd-editor-tools { padding: 14px 27px; display: flex; gap: 14px; justify-content: space-between; align-items: center; flex-wrap: wrap; border-bottom: 1px solid #e1ebf1; background: #fbfdff; }
+.jd-editor-tools > div { display: flex; gap: 5px; }
+.jd-editor-tools [role=tab] { border: 1px solid transparent; background: transparent; padding: 10px 12px; border-radius: 6px; color: #6d8a9e; display: flex; align-items: center; gap: 7px; font-size: calc(10px * var(--text-scale)); }
+.jd-editor-tools [aria-selected=true] { background: #e9f6fc; color: #087fa8; border-color: #cce5f2; }
+.jd-editor-tools .text-button { font-size: calc(10px * var(--text-scale)); }
+.jd-editor .modal-body { background: #f6f9fc; }
+.jd-editor-section { padding: 23px; border: 1px solid #e0eaf1; border-radius: 9px; background: #fff; }
+.jd-editor-section + .jd-editor-section { margin-top: 20px; }
+.jd-editor-section h3 { font-size: calc(15px * var(--text-scale)); color: #245d7c; display: flex; align-items: center; gap: 11px; margin-bottom: 20px; }
+.jd-editor-section h3 > span { background: #eaf6fc; color: #2189ad; font-size: calc(10px * var(--text-scale)); padding: 6px; border-radius: 5px; }
+.jd-editor-section .field > label, .jd-editor-section .field > input, .jd-editor-section .field > select, .jd-editor-section .field > textarea { font-size: calc(11px * var(--text-scale)); }
+.jd-editor-section > .field { margin-top: 18px; }
+.jd-editor-section textarea { line-height: 1.9; }
+.jd-editor-fields[hidden] { display: none; }
+.jd-editor-preview { background: #fff; padding: 28px; border: 1px solid #deebf2; border-radius: 9px; }
+.jd-editor-preview > h3 { color: #175674; font-size: calc(24px * var(--text-scale)); margin: 13px 0 25px; line-height: 1.45; overflow-wrap: anywhere; }
 .jd-apply-note { margin-top: 28px; padding-top: 25px; border-top: 1px solid #e6eef4; }
 .jd-apply-note .button { margin-top: 20px; }
 .jd-sidebar { padding: 25px; position: sticky; top: 25px; min-width: 0; }
@@ -103,6 +133,12 @@
   .jobs-toolbar > .search-input { max-width: none; min-width: 200px; }
 }
 @media(max-width:560px) {
+  .jd-editor-tools { padding: 13px 18px; }
+  .jd-editor-tools > div { width: 100%; }
+  .jd-editor-tools [role=tab] { flex: 1; justify-content: center; }
+  .jd-editor-section, .jd-editor-preview { padding: 18px 15px; }
+  .jd-editor .modal-body { padding: 18px 13px; }
+  .jd-general-info { grid-template-columns: 1fr; }
   .simple-careers .public-header, .jd-page .public-header { padding: 20px; }
   .company-intro { text-align: left; padding: 32px 20px 24px; }
   .company-intro h1 { font-size: calc(27px * var(--text-scale)); margin-top: 13px; }

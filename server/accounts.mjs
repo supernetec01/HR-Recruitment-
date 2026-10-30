@@ -9,7 +9,7 @@ export function publicUser(user) {
 export function createAccount(db, { username, name, email = '', password, role = 'hr' }, actorId) {
   const login = normalizeUsername(username);
   if (!validUsername(login)) throw Object.assign(new Error('Tên đăng nhập cần 3–50 ký tự: chữ không dấu, số, dấu chấm, gạch dưới hoặc gạch ngang.'), { status: 400 });
-  if (!name?.trim() || !['admin','boss','hr'].includes(role) || !validPassword(password)) throw Object.assign(new Error('Cần họ tên, vai trò hợp lệ và mật khẩu từ 12–128 ký tự.'), { status: 400 });
+  if (!name?.trim() || !['admin','boss','hr','interviewer'].includes(role) || !validPassword(password)) throw Object.assign(new Error('Cần họ tên, vai trò hợp lệ và mật khẩu từ 12–128 ký tự.'), { status: 400 });
   const address = normalizeEmail(email) || `${login}@accounts.supernet.invalid`;
   // Do not allow a username to shadow another user's email login, or vice versa.
   if (db.prepare('SELECT id FROM users WHERE username=? COLLATE NOCASE OR email=? COLLATE NOCASE OR email=? COLLATE NOCASE OR username=? COLLATE NOCASE').get(login, login, address, address)) throw Object.assign(new Error('Tên đăng nhập hoặc email đã được sử dụng.'), { status: 409 });

@@ -253,3 +253,10 @@ body, .public-page { background: var(--bg); color: var(--text); }
   .public-header .brand strong { font-size: calc(21px * var(--text-scale, 1.2)); }
   .public-header .brand-symbol { width: 37px; height: 36px; }
 }
+.role-pill.interviewer { background: #e4f5fb; color: #087a9e; }
+.modal .profile-mini > div { min-width: 0; }
+.modal .profile-mini p { overflow-wrap: anywhere; }
+.contact-confirmation { border: 1px solid #cde3ee; border-radius: 8px; background: #f5fbfe; padding: 18px; }
+.contact-confirmation h3 { font-size: calc(13px * var(--text-scale)); color: #2f637c; margin-bottom: 15px; }
+.contact-confirmation .checkbox-line { margin-top: 15px; font-size: calc(10px * var(--text-scale)); line-height: 1.8; }
+.contact-confirmation > .helper { margin-top: 9px; }

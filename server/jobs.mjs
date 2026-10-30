@@ -15,6 +15,11 @@ const jobSchema = z.object({
   benefits: z.string().trim().max(10000).default(''),
   workingHours: z.string().trim().max(1000).default(''),
   salaryRange: z.string().trim().max(200).default(''),
+  companyName: z.string().trim().max(200).default(''),
+  applicationInstructions: z.string().trim().max(3000).default(''),
+  applicationEmail: z.union([z.literal(''), z.string().trim().toLowerCase().max(254).pipe(z.email())]).default(''),
+  applicationEmailSubject: z.string().trim().max(200).default(''),
+  applicationZalo: z.string().trim().max(30).refine(value => !value || (/^\+?[\d\s().-]+$/.test(value) && value.replace(/\D/g, '').length >= 8 && value.replace(/\D/g, '').length <= 15), 'Số Zalo cần từ 8–15 chữ số.').default(''),
   businessLine: z.enum(['','safestraps','jielien','baby-tatto']).default(''),
   applicationDeadline: z.union([z.literal(''), z.iso.date()]).default(''),
   status: z.enum(['open','closed']).default('open'),
@@ -23,8 +28,10 @@ const fields = {
   title:'title', department:'department', location:'location', description:'description', openings:'openings',
   employmentType:'employment_type', requirements:'requirements', benefits:'benefits', workingHours:'working_hours',
   salaryRange:'salary_range', businessLine:'business_line', applicationDeadline:'application_deadline', status:'status',
+  companyName:'company_name', applicationInstructions:'application_instructions', applicationEmail:'application_email',
+  applicationEmailSubject:'application_email_subject', applicationZalo:'application_zalo',
 };
-const publicFields = 'id,title,department,location,employment_type,description,openings,requirements,benefits,working_hours,salary_range,business_line,application_deadline,created_at,updated_at';
+const publicFields = 'id,title,department,location,employment_type,description,openings,requirements,benefits,working_hours,salary_range,business_line,application_deadline,company_name,application_instructions,application_email,application_email_subject,application_zalo,created_at,updated_at';
 
 export function registerJobRoutes(app, { db, staff, editor }) {
   app.get('/api/v1/jobs', staff, (req, res) => res.json(db.prepare(`SELECT j.*, (SELECT COUNT(*) FROM applications a WHERE a.job_id=j.id) AS application_count FROM jobs j ORDER BY created_at DESC,j.rowid DESC`).all()));

@@ -6,7 +6,7 @@ const problem = (status, message) => { throw Object.assign(new Error(message), {
 const password = z.string().min(12, 'Mật khẩu cần ít nhất 12 ký tự.').max(128);
 const email = z.union([z.literal(''), z.email()]);
 const adminOnly = (req, res, next) => req.user.role === 'admin' ? next() : res.status(403).json({ message: 'Chỉ quản trị viên được quản lý tài khoản.' });
-const bossOnly = (req, res, next) => ['boss','admin'].includes(req.user.role) ? next() : res.status(403).json({ message: 'Chỉ Sếp hoặc quản trị viên được yêu cầu phỏng vấn.' });
+const reviewerOnly = (req, res, next) => ['boss','admin','interviewer'].includes(req.user.role) ? next() : res.status(403).json({ message: 'Tài khoản chưa có quyền duyệt ứng viên và yêu cầu phỏng vấn.' });
 const localDay = value => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }).format(new Date(value));
 
 export function registerInternalRoutes(app, { db, staff, editor, demo, getCandidate, idempotent }) {
@@ -14,13 +14,13 @@ export function registerInternalRoutes(app, { db, staff, editor, demo, getCandid
   app.get('/api/v1/users', staff, (req, res) => res.json(users().filter(u => u.active)));
   app.get('/api/v1/admin/users', staff, adminOnly, (req, res) => res.json(users()));
   app.post('/api/v1/admin/users', staff, adminOnly, (req, res) => {
-    const data = z.object({ username: z.string().trim().min(3).max(50), name: z.string().trim().min(1).max(120), email: email.default(''), role: z.enum(['hr','boss','admin']), password }).parse(req.body);
+    const data = z.object({ username: z.string().trim().min(3).max(50), name: z.string().trim().min(1).max(120), email: email.default(''), role: z.enum(['hr','boss','admin','interviewer']), password }).parse(req.body);
     if (demo) problem(409, 'Hãy sử dụng không gian nội bộ để tạo tài khoản thực.');
     const user = transaction(db, () => createAccount(db, data, req.user.id));
     res.status(201).json({ user });
   });
   app.patch('/api/v1/admin/users/:id', staff, adminOnly, (req, res) => {
-    const data = z.object({ name: z.string().trim().min(1).max(120).optional(), email: email.optional(), role: z.enum(['hr','boss','admin']).optional(), active: z.boolean().optional(), password: password.optional() }).parse(req.body);
+    const data = z.object({ name: z.string().trim().min(1).max(120).optional(), email: email.optional(), role: z.enum(['hr','boss','admin','interviewer']).optional(), active: z.boolean().optional(), password: password.optional() }).parse(req.body);
     if (demo) problem(409, 'Tài khoản minh họa không được thay đổi.');
     const updated = transaction(db, () => {
       const previous = db.prepare("SELECT * FROM users WHERE id=? AND id!='public' AND is_demo=0").get(req.params.id);
@@ -56,34 +56,38 @@ export function registerInternalRoutes(app, { db, staff, editor, demo, getCandid
   });
 
   const requestQuery = `SELECT r.*,c.id AS candidate_id,c.full_name AS candidate_name,c.email,c.phone,c.owner_name,
-    a.job_id,a.stage,j.title AS job_title,u.name AS requested_by_name,d.original_name AS document_name,d.version AS document_version,
+    a.job_id,a.stage,j.title AS job_title,u.name AS requested_by_name,d.original_name AS document_name,d.version AS document_version,d.review_status AS document_review_status,
+    preferred.name AS preferred_interviewer_name,
     (SELECT i.id FROM interviews i WHERE i.request_id=r.id AND i.status!='cancelled' ORDER BY i.created_at DESC LIMIT 1) AS interview_id
     FROM interview_requests r JOIN applications a ON a.id=r.application_id
     JOIN (SELECT candidates.*,owner.name AS owner_name FROM candidates LEFT JOIN users owner ON owner.id=candidates.owner_id) c ON c.id=a.candidate_id
-    JOIN jobs j ON j.id=a.job_id JOIN users u ON u.id=r.requested_by JOIN documents d ON d.id=r.document_id`;
+    JOIN jobs j ON j.id=a.job_id JOIN users u ON u.id=r.requested_by JOIN documents d ON d.id=r.document_id
+    LEFT JOIN users preferred ON preferred.id=r.preferred_interviewer_id`;
   app.get('/api/v1/interview-requests', staff, (req, res) => res.json(db.prepare(`${requestQuery} ORDER BY r.created_at DESC`).all()));
-  app.post('/api/v1/applications/:id/interview-requests', staff, bossOnly, (req, res) => {
-    const data = z.object({ notes: z.string().trim().max(2000).default(''), documentId: z.string().max(100).default('') }).parse(req.body);
+  app.post('/api/v1/applications/:id/interview-requests', staff, reviewerOnly, (req, res) => {
+    const data = z.object({ notes: z.string().trim().max(2000).default(''), documentId: z.string().max(100).default(''), interviewerId: z.string().max(100).default(req.user.id) }).parse(req.body);
     idempotent(req, res, `interview-request:${req.user.id}:${req.params.id}`, () => {
       const application = db.prepare('SELECT * FROM applications WHERE id=?').get(req.params.id);
       if (!application) problem(404, 'Không tìm thấy lượt ứng tuyển.');
       if (['hired','offered','rejected'].includes(application.stage)) problem(409, 'Lượt ứng tuyển đã có quyết định hoặc đã kết thúc.');
       if (db.prepare("SELECT id FROM interview_requests WHERE application_id=? AND status='pending'").get(application.id)) problem(409, 'HR đã có một yêu cầu phỏng vấn đang chờ xử lý cho lượt ứng tuyển này.');
       if (db.prepare("SELECT id FROM interviews WHERE application_id=? AND status='scheduled'").get(application.id)) problem(409, 'Ứng viên đã có lịch phỏng vấn đang chờ.');
-      const document = data.documentId ? db.prepare("SELECT * FROM documents WHERE id=? AND candidate_id=? AND review_status='reviewed'").get(data.documentId, application.candidate_id) : db.prepare("SELECT * FROM documents WHERE candidate_id=? AND review_status='reviewed' ORDER BY version DESC LIMIT 1").get(application.candidate_id);
-      if (!document) problem(409, 'Cần có CV đã được HR kiểm tra an toàn trước khi chọn phỏng vấn.');
+      const document = data.documentId ? db.prepare('SELECT * FROM documents WHERE id=? AND candidate_id=?').get(data.documentId, application.candidate_id) : db.prepare('SELECT * FROM documents WHERE candidate_id=? ORDER BY version DESC LIMIT 1').get(application.candidate_id);
+      if (!document) problem(409, 'Hồ sơ chưa có CV. Hãy bổ sung CV trước khi gửi yêu cầu.');
+      if (!db.prepare("SELECT id FROM users WHERE id=? AND id!='public' AND active=1 AND is_demo=? AND role IN ('interviewer','boss','admin')").get(data.interviewerId, demo ? 1 : 0)) problem(400, 'Người phỏng vấn được đề xuất không hợp lệ hoặc đã bị khóa.');
       const rid = id(), created = now();
-      db.prepare('INSERT INTO interview_requests(id,application_id,document_id,requested_by,notes,previous_stage,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)').run(rid, application.id, document.id, req.user.id, data.notes, application.stage, created, created);
+      db.prepare('INSERT INTO interview_requests(id,application_id,document_id,requested_by,notes,previous_stage,created_at,updated_at,preferred_interviewer_id) VALUES(?,?,?,?,?,?,?,?,?)').run(rid, application.id, document.id, req.user.id, data.notes, application.stage, created, created, data.interviewerId);
       db.prepare("UPDATE applications SET stage='interview_requested' WHERE id=?").run(application.id);
-      audit(db, application.candidate_id, req.user.id, 'interview.requested', { requestId: rid, applicationId: application.id, documentId: document.id, cvVersion: document.version, notes: data.notes });
+      audit(db, application.candidate_id, req.user.id, 'interview.requested', { requestId: rid, applicationId: application.id, documentId: document.id, cvVersion: document.version, documentReviewStatus: document.review_status, preferredInterviewerId: data.interviewerId, notes: data.notes });
       return { request: db.prepare(`${requestQuery} WHERE r.id=?`).get(rid) };
     });
   });
-  app.patch('/api/v1/interview-requests/:id', staff, bossOnly, (req, res) => {
+  app.patch('/api/v1/interview-requests/:id', staff, reviewerOnly, (req, res) => {
     const { reason } = z.object({ reason: z.string().trim().min(5).max(1000) }).parse(req.body);
     transaction(db, () => {
       const request = db.prepare("SELECT r.*,a.candidate_id FROM interview_requests r JOIN applications a ON a.id=r.application_id WHERE r.id=? AND r.status='pending'").get(req.params.id);
       if (!request) problem(409, 'Yêu cầu không còn chờ xử lý; nếu đã có lịch hãy liên hệ HR.');
+      if (req.user.role === 'interviewer' && request.requested_by !== req.user.id) problem(403, 'Chỉ được hủy yêu cầu do bạn tạo.');
       db.prepare("UPDATE interview_requests SET status='cancelled',updated_at=? WHERE id=?").run(now(), request.id);
       db.prepare("UPDATE applications SET stage=? WHERE id=? AND stage='interview_requested'").run(request.previous_stage, request.application_id);
       audit(db, request.candidate_id, req.user.id, 'interview_request.cancelled', { requestId: request.id, reason });
@@ -100,13 +104,19 @@ export function registerInternalRoutes(app, { db, staff, editor, demo, getCandid
     applicationId: z.string().min(1), interviewerId: z.string().min(1), startsAt: z.iso.datetime(),
     durationMinutes: z.coerce.number().int().min(15).max(240).optional(), endsAt: z.iso.datetime().optional(),
     mode: z.enum(['Online','Trực tiếp','Điện thoại']), location: z.string().trim().min(2).max(1000), requestId: z.string().max(100).default(''),
+    contactConfirmed: z.boolean().default(false), contactEvidence: z.string().trim().max(1000).default(''),
   }).refine(d => d.durationMinutes || d.endsAt, 'Cần chọn thời lượng phỏng vấn.');
   function bookingValues(data, exceptId = '') {
     const application = db.prepare('SELECT * FROM applications WHERE id=?').get(data.applicationId);
     if (!application) problem(400, 'Lượt ứng tuyển không hợp lệ.');
     if (['hired','offered','rejected'].includes(application.stage)) problem(409, 'Không thể đặt lịch cho lượt ứng tuyển đã kết thúc hoặc có quyết định.');
     const candidate = getCandidate(application.candidate_id);
-    if ((!candidate.email && !candidate.phone) || candidate.consent_status !== 'granted') problem(409, 'Cần thông tin liên hệ và sự đồng ý xử lý dữ liệu trước khi xếp lịch.');
+    if (!candidate.email && !candidate.phone) problem(409, 'Cần bổ sung email hoặc số điện thoại để liên hệ ứng viên.');
+    if (candidate.consent_status === 'withdrawn') problem(409, 'Ứng viên đã rút lại sự đồng ý xử lý dữ liệu. Chỉ tiếp tục sau khi ghi nhận sự đồng ý mới của ứng viên.');
+    const previousContact = exceptId ? db.prepare('SELECT contact_evidence FROM interviews WHERE id=?').get(exceptId) : null;
+    const contactEvidence = data.contactConfirmed ? data.contactEvidence : previousContact?.contact_evidence || '';
+    if (data.contactConfirmed && contactEvidence.length < 10) problem(400, 'Ghi nhận nội dung trao đổi với ứng viên cần ít nhất 10 ký tự.');
+    if (candidate.consent_status === 'pending' && contactEvidence.length < 10) problem(409, 'Hãy ghi nhận việc đã liên hệ và thống nhất lịch với ứng viên để tiếp tục.');
     const start = new Date(data.startsAt), end = data.durationMinutes ? new Date(+start + data.durationMinutes * 60000) : new Date(data.endsAt);
     const duration = (+end - +start) / 60000;
     if (+start <= Date.now() || !Number.isInteger(duration) || duration < 15 || duration > 240 || localDay(start) !== localDay(end)) problem(400, 'Lịch phải trong tương lai, cùng ngày và có thời lượng từ 15–240 phút.');
@@ -114,20 +124,20 @@ export function registerInternalRoutes(app, { db, staff, editor, demo, getCandid
     const startsAt = start.toISOString(), endsAt = end.toISOString();
     if (db.prepare("SELECT id FROM interviews WHERE interviewer_id=? AND status='scheduled' AND id!=? AND starts_at < ? AND ends_at > ?").get(data.interviewerId, exceptId, endsAt, startsAt)) problem(409, 'Người phỏng vấn đã có lịch trong khoảng thời gian này.');
     if (db.prepare("SELECT i.id FROM interviews i JOIN applications a ON a.id=i.application_id WHERE a.candidate_id=? AND i.status='scheduled' AND i.id!=? AND i.starts_at < ? AND i.ends_at > ?").get(candidate.id, exceptId, endsAt, startsAt)) problem(409, 'Ứng viên đã có lịch phỏng vấn trong khoảng thời gian này.');
-    return { application, candidate, startsAt, endsAt, duration };
+    return { application, candidate, startsAt, endsAt, duration, contactEvidence };
   }
   app.post('/api/v1/interviews', staff, editor, (req, res) => {
     const data = bookingSchema.parse(req.body);
     const result = transaction(db, () => {
-      const values = bookingValues(data), { application, candidate, startsAt, endsAt, duration } = values;
+      const values = bookingValues(data), { application, candidate, startsAt, endsAt, duration, contactEvidence } = values;
       const pending = db.prepare("SELECT * FROM interview_requests WHERE application_id=? AND status='pending'").get(application.id);
       if (data.requestId && (!pending || pending.id !== data.requestId)) problem(409, 'Yêu cầu đã được xử lý hoặc không thuộc lượt ứng tuyển này. Hãy tải lại danh sách.');
       if (db.prepare("SELECT id FROM interviews WHERE application_id=? AND status='scheduled'").get(application.id)) problem(409, 'Lượt ứng tuyển đã có lịch. Hãy dùng chức năng Đổi lịch.');
       const iid = id();
-      db.prepare('INSERT INTO interviews(id,application_id,interviewer_id,starts_at,ends_at,mode,location,created_by,created_at,request_id) VALUES(?,?,?,?,?,?,?,?,?,?)').run(iid, application.id, data.interviewerId, startsAt, endsAt, data.mode, data.location, req.user.id, now(), pending?.id || null);
+      db.prepare('INSERT INTO interviews(id,application_id,interviewer_id,starts_at,ends_at,mode,location,created_by,created_at,request_id,contact_evidence,contacted_at,contacted_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)').run(iid, application.id, data.interviewerId, startsAt, endsAt, data.mode, data.location, req.user.id, now(), pending?.id || null, contactEvidence, contactEvidence ? now() : null, contactEvidence ? req.user.id : null);
       if (pending) db.prepare("UPDATE interview_requests SET status='scheduled',updated_at=? WHERE id=?").run(now(), pending.id);
       db.prepare("UPDATE applications SET stage='scheduled' WHERE id=?").run(application.id);
-      audit(db, candidate.id, req.user.id, 'interview.created', { interviewId: iid, requestId: pending?.id || null, startsAt, endsAt, durationMinutes: duration, interviewerId: data.interviewerId });
+      audit(db, candidate.id, req.user.id, 'interview.created', { interviewId: iid, requestId: pending?.id || null, startsAt, endsAt, durationMinutes: duration, interviewerId: data.interviewerId, contactEvidence, consentStatus: candidate.consent_status });
       return { id: iid };
     }); res.status(201).json(result);
   });
@@ -146,9 +156,9 @@ export function registerInternalRoutes(app, { db, staff, editor, demo, getCandid
       } else {
         const { reason } = z.object({ reason: z.string().trim().min(5).max(1000) }).parse(req.body);
         const data = bookingSchema.parse({ ...req.body, applicationId: previous.application_id, requestId: previous.request_id || '' });
-        const { startsAt, endsAt, duration } = bookingValues(data, previous.id);
-        db.prepare('UPDATE interviews SET starts_at=?,ends_at=?,interviewer_id=?,mode=?,location=? WHERE id=?').run(startsAt, endsAt, data.interviewerId, data.mode, data.location, previous.id);
-        audit(db, previous.candidate_id, req.user.id, 'interview.rescheduled', { interviewId: previous.id, before: { startsAt: previous.starts_at, endsAt: previous.ends_at, interviewerId: previous.interviewer_id, location: previous.location }, after: { startsAt, endsAt, durationMinutes: duration, interviewerId: data.interviewerId, location: data.location }, reason });
+        const { startsAt, endsAt, duration, contactEvidence } = bookingValues(data, previous.id);
+        db.prepare('UPDATE interviews SET starts_at=?,ends_at=?,interviewer_id=?,mode=?,location=?,contact_evidence=?,contacted_at=?,contacted_by=? WHERE id=?').run(startsAt, endsAt, data.interviewerId, data.mode, data.location, contactEvidence, contactEvidence === previous.contact_evidence ? previous.contacted_at : contactEvidence ? now() : null, contactEvidence === previous.contact_evidence ? previous.contacted_by : contactEvidence ? req.user.id : null, previous.id);
+        audit(db, previous.candidate_id, req.user.id, 'interview.rescheduled', { interviewId: previous.id, before: { startsAt: previous.starts_at, endsAt: previous.ends_at, interviewerId: previous.interviewer_id, location: previous.location }, after: { startsAt, endsAt, durationMinutes: duration, interviewerId: data.interviewerId, location: data.location, contactEvidence }, reason });
       }
     });
     res.json({ ok: true });

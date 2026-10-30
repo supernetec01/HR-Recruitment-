@@ -11,7 +11,7 @@ export function Stage({ stage }: { stage: string }) {
   const info = STAGES[stage] || STAGES.new;
   return <span className={`stage ${info.color}`}><span />{info.label}</span>;
 }
-export function Modal({ title, subtitle, children, onClose, wide = false }: { title: string; subtitle?: string; children: ReactNode; onClose: () => void; wide?: boolean }) {
+export function Modal({ title, subtitle, children, onClose, wide = false, className = '' }: { title: string; subtitle?: string; children: ReactNode; onClose: () => void; wide?: boolean; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose); closeRef.current = onClose;
   useEffect(() => {
@@ -33,7 +33,7 @@ export function Modal({ title, subtitle, children, onClose, wide = false }: { ti
     return () => { document.body.style.overflow = previousOverflow; document.removeEventListener('keydown', listener); original?.focus(); };
   }, []);
   return <div className="modal-backdrop" onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
-    <div className={`modal ${wide ? 'wide' : ''}`} role="dialog" aria-modal="true" aria-labelledby="modal-title" tabIndex={-1} ref={ref}>
+    <div className={`modal ${wide ? 'wide' : ''} ${className}`} role="dialog" aria-modal="true" aria-labelledby="modal-title" tabIndex={-1} ref={ref}>
       <header className="modal-head"><div><span className="eyebrow">SUPER NET RECRUITMENT</span><h2 id="modal-title">{title}</h2>{subtitle && <p>{subtitle}</p>}</div><button className="icon-button" aria-label="Đóng" onClick={onClose}><X size={20}/></button></header>
       {children}
     </div>

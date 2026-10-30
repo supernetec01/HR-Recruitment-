@@ -89,7 +89,9 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
       file.nameDecoded = true;
     }
     const ext = file.originalname.toLowerCase().split('.').pop();
-    const pdf = ext === 'pdf' && file.buffer.subarray(0, 5).toString() === '%PDF-';
+    const headerOffset = file.buffer.subarray(0, 1024).indexOf(Buffer.from('%PDF-'));
+    // Some PDF exporters prepend whitespace or a UTF-8 BOM. Preserve the original bytes/xref offsets.
+    const pdf = ext === 'pdf' && headerOffset >= 0 && /^(?:\uFEFF)?[\t\n\f\r ]*$/.test(file.buffer.subarray(0, headerOffset).toString('utf8'));
     const docx = ext === 'docx' && file.buffer.subarray(0, 4).equals(Buffer.from([0x50,0x4b,0x03,0x04])) && file.buffer.includes(Buffer.from('[Content_Types].xml')) && file.buffer.includes(Buffer.from('word/document.xml'));
     if (!pdf && !docx) fail(400, 'Chỉ nhận file PDF hoặc DOCX hợp lệ, tối đa 10 MB.');
     if (pdf && /\/(JavaScript|JS|Launch|EmbeddedFile)\b/.test(file.buffer.toString('latin1'))) fail(400, 'PDF chứa nội dung chủ động không được hỗ trợ.');

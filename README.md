@@ -1,6 +1,6 @@
 # Super Net Recruitment Hub
 
-Website tuyển dụng Super Net: **Admin/HR đăng JD → ứng viên xem tuyển dụng và gửi CV → HR tiếp nhận hồ sơ → Sếp chọn Hẹn phỏng vấn → HR xếp lịch → dashboard hiển thị ngày/giờ/thời lượng**.
+Website tuyển dụng Super Net: **Admin/HR đăng JD → ứng viên xem tuyển dụng và gửi CV → HR tiếp nhận hồ sơ → Sếp/Người phỏng vấn chọn ứng viên → HR xếp lịch → dashboard hiển thị ngày/giờ/thời lượng**.
 
 Bảng màu Super Net: navy `#034969`, xanh dương `#149cd0`, xanh lá `#93c947`. Một hồ sơ ứng viên gốc, nhiều lượt ứng tuyển và nhiều phiên bản CV.
 
@@ -23,24 +23,26 @@ Xem [hướng dẫn VS Code và sử dụng](docs/vscode.md), [thiết kế dữ
 
 ## Phân quyền
 
-| Chức năng | Admin | Sếp | HR |
-| --- | --- | --- | --- |
-| Tạo user, đổi quyền, khóa/mở, đặt lại mật khẩu | Có | — | — |
-| Xem hồ sơ, CV đã kiểm tra, dashboard/báo cáo | Có | Có | Có |
-| Tiếp nhận/sửa hồ sơ, upload CV, xác minh trùng | Có | — | Có |
-| Chọn CV và yêu cầu Hẹn phỏng vấn | Có | Có | — |
-| Nhận yêu cầu, liên hệ, tạo/đổi/hủy lịch | Có | — | Có |
-| Tạo/sửa JD, mở/tạm dừng tuyển dụng | Có | — | Có |
-| Đổi mật khẩu cá nhân | Có | Có | Có |
+| Chức năng | Admin | Sếp | Người phỏng vấn | HR |
+| --- | --- | --- | --- | --- |
+| Tạo user, đổi quyền, khóa/mở, đặt lại mật khẩu | Có | — | — | — |
+| Xem hồ sơ, CV đã kiểm tra, dashboard/báo cáo | Có | Có | Có | Có |
+| Tiếp nhận/sửa hồ sơ, upload CV, xác minh trùng | Có | — | — | Có |
+| Chọn CV, yêu cầu Hẹn phỏng vấn, đề xuất người phỏng vấn | Có | Có | Có | — |
+| Nhận yêu cầu, liên hệ, tạo/đổi/hủy lịch | Có | — | — | Có |
+| Tạo/sửa JD, mở/tạm dừng tuyển dụng | Có | — | — | Có |
+| Đổi mật khẩu cá nhân | Có | Có | Có | Có |
 
 Backend kiểm tra quyền trên từng API. Khóa tài khoản, đổi quyền hoặc đặt lại mật khẩu thu hồi các phiên đăng nhập. Không thể tự khóa/hạ quyền Admin đang dùng hoặc làm mất quản trị viên cuối cùng.
 
+Chỉ Admin thấy **Thành viên & phân quyền**, danh sách tài khoản và bảng chức năng theo vai trò. Nhân sự khác thấy **Tài khoản → Tài khoản cá nhân** để đổi mật khẩu/đăng xuất; các trang làm việc hiển thị thao tác phù hợp và không có bảng giải thích vai trò.
+
 ## Quy trình sử dụng
 
-1. **Admin:** Thành viên & phân quyền → Tạo tài khoản. Điền họ tên, tên đăng nhập, vai trò, mật khẩu từ 12 ký tự; email không bắt buộc. Tạo tài khoản Sếp và HR. Admin/HR vào Vị trí tuyển dụng → Tạo JD tuyển dụng để đăng tin.
+1. **Admin:** Thành viên & phân quyền → Tạo tài khoản. Điền họ tên, tên đăng nhập, vai trò, mật khẩu từ 12 ký tự; email không bắt buộc. Có thể cấp vai trò Người phỏng vấn, Sếp hoặc HR. Admin/HR vào Vị trí tuyển dụng → Tạo JD tuyển dụng để đăng tin.
 2. **HR:** Thêm ứng viên / Upload CV từ Facebook, email, Zalo… Có thể lưu thiếu thông tin; giữ nguồn và ngày nhận thực tế. PDF/DOCX tối đa 10 MB, được cách ly. HR kiểm tra an toàn qua quy trình bên ngoài rồi ghi căn cứ tại CV & tài liệu → Ghi nhận kiểm tra. Chưa có quét virus tự động.
-3. **Sếp:** Mở hồ sơ → CV & tài liệu → Xem CV (PDF; DOCX tải xuống). Tại Tổng quan của hồ sơ, chọn Hẹn phỏng vấn, đúng vị trí và phiên bản CV, ghi chú gửi HR. Đây là yêu cầu xếp lịch, chưa phải giờ hẹn hoặc quyết định tuyển dụng.
-4. **HR:** Nhận yêu cầu trên dashboard/Yêu cầu phỏng vấn. Liên hệ ứng viên rồi chọn Liên hệ & xếp lịch: ngày, giờ bắt đầu, thời lượng 15–240 phút, người phỏng vấn và địa điểm. Giờ kết thúc tự tính; kiểm tra trùng cả ứng viên lẫn người phỏng vấn.
+3. **Sếp/Người phỏng vấn:** Mở hồ sơ → Hẹn phỏng vấn, chọn vị trí, phiên bản CV, Người phỏng vấn đề xuất và ghi chú. CV đang chờ kiểm tra cũng được gắn vào yêu cầu; việc gửi yêu cầu không tự cho phép mở/tải tài liệu hoặc đổi trạng thái kiểm tra. Đây là lựa chọn ứng viên cho vòng phỏng vấn, chưa phải quyết định tuyển dụng cuối cùng.
+4. **HR:** Nhận yêu cầu trên dashboard/Yêu cầu phỏng vấn. Liên hệ ứng viên rồi chọn Liên hệ & xếp lịch: ngày, giờ bắt đầu, thời lượng 15–240 phút, người phỏng vấn và địa điểm. Người được đề xuất được chọn sẵn, HR có thể điều chỉnh. Nếu hồ sơ chưa xác nhận dữ liệu, nhập Nội dung đã trao đổi và đánh dấu Đã liên hệ ứng viên và thống nhất việc hẹn phỏng vấn. Việc này lưu riêng, không tự đổi consent sang đã đồng ý. Hồ sơ đã rút lại sự đồng ý cần ghi nhận sự đồng ý mới trước khi xếp lịch. Giờ kết thúc tự tính; kiểm tra trùng cả ứng viên lẫn người phỏng vấn.
 5. **Dashboard:** Bảng theo ngày, khung giờ, số phút, ứng viên, vị trí và người phỏng vấn, theo UTC+7. Đổi lịch cần lý do; hủy lịch đưa yêu cầu về chờ HR; hoàn thành chỉ sau giờ bắt đầu. Nhật ký giữ người và nội dung thay đổi. Tự cập nhật mỗi 30 giây hoặc khi trở lại tab; có nút cập nhật thủ công.
 
 Cổng `/tuyen-dung` cho ứng viên tự gửi; nghi trùng được đưa vào Chờ xác minh để HR quyết định, không tự ghi đè danh tính/CV. HR có thể tạo link bổ sung có hạn, dùng một lần để thêm đúng hồ sơ. Những luồng tiếp nhận trước đây được giữ nguyên.
@@ -49,9 +51,11 @@ Cổng `/tuyen-dung` cho ứng viên tự gửi; nghi trùng được đưa vào
 
 Trang `/tuyen-dung` giới thiệu ba ngành hàng: **phụ kiện xe Safestraps**, **thiết bị âm thanh JieLien**, **Mẹ và Bé Baby tatto**; phía dưới là vị trí đang tuyển, tìm kiếm và lọc ngành hàng.
 
-Admin/HR vào **Vị trí tuyển dụng → Tạo JD tuyển dụng**, nhập tên vị trí, bộ phận, ngành hàng, số lượng, hình thức, địa điểm, mức lương, thời gian làm việc, mô tả công việc, yêu cầu, quyền lợi và hạn nhận hồ sơ. Chọn **Đang tuyển → Lưu & đăng JD** để công khai; chọn **Tạm dừng → Lưu JD** để lưu khi chưa muốn hiển thị. Nội dung xuống dòng được giữ nguyên trên trang JD.
+Admin/HR vào **Vị trí tuyển dụng → Tạo JD tuyển dụng**. Biểu mẫu chia thành Thông tin chung, Nội dung công việc, Cách thức ứng tuyển và Đăng tuyển; nhập tên công ty, vị trí, bộ phận, ngành hàng, số lượng, hình thức, địa chỉ đầy đủ, mức lương, giờ làm, mô tả, yêu cầu, quyền lợi, hướng dẫn ứng tuyển, email nhận CV, tiêu đề email, Zalo và hạn nhận hồ sơ. Dùng **Xem trước JD** để kiểm tra trước khi lưu. Nội dung xuống dòng được giữ nguyên; các dòng bắt đầu bằng “-”/“•” hiển thị dạng danh sách.
 
-Mỗi vị trí có **Chỉnh sửa JD**, **Xem JD**, chia sẻ liên kết và tạm dừng/mở lại. Ứng viên xem JD ở `/tuyen-dung/:id` rồi chọn **Ứng tuyển ngay**, không cần tài khoản. Sếp được xem nhưng không được tạo/sửa/tạm dừng JD; quyền được kiểm tra cả ở API.
+**Điền mẫu Content Marketing** điền nội dung từ JD Super Net đã cung cấp, gồm địa chỉ Himlam, giờ 09:00–18:00 từ Thứ 2 đến Thứ 7, lương 10–15 triệu, nhiệm vụ, yêu cầu, bảo hiểm/quyền lợi và thông tin email/Zalo. Nội dung chỉ nằm trong biểu mẫu cho đến khi người dùng lưu. Có thể sửa mọi mục trước khi đăng; không tự thêm tin vào database đang vận hành. Chọn **Đang tuyển → Lưu & đăng JD** để công khai; chọn **Tạm dừng → Lưu JD** để lưu khi chưa muốn hiển thị.
+
+Mỗi vị trí có **Chỉnh sửa JD**, **Xem JD**, chia sẻ liên kết và tạm dừng/mở lại. Ứng viên xem đầy đủ thông tin, nhiệm vụ, yêu cầu, lương/quyền lợi và cách ứng tuyển ở `/tuyen-dung/:id` rồi chọn **Ứng tuyển ngay**, không cần tài khoản. Email/Zalo hiển thị thành liên kết; tiêu đề email được gợi ý khi mở ứng dụng email. Sếp/Người phỏng vấn được xem nhưng không được tạo/sửa/tạm dừng JD; quyền được kiểm tra cả ở API.
 
 Chỉ tin đang tuyển và còn hạn được công khai; ngày hết hạn tính đến hết ngày theo UTC+7. Tin quá hạn/tạm dừng bị ẩn cả ở danh sách và đường dẫn trực tiếp, ngừng nhận lượt ứng tuyển mới. Hồ sơ/lịch phỏng vấn đã có vẫn được giữ. Để tuyển lại tin hết hạn, chỉnh hạn nhận hồ sơ hoặc để trống rồi mở lại. Chỉnh sửa có kiểm tra phiên bản để tránh ghi đè cập nhật của người khác, đồng thời lưu người sửa, thời điểm và nội dung thay đổi.
 

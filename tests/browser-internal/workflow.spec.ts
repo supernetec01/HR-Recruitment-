@@ -47,7 +47,7 @@ test('Admin logs in normally and creates an HR account through the management sc
   await page.getByRole('button',{name:'Đăng xuất',exact:true}).click();
   await login(page,'hr-ui');
   await expect(page.locator('.sidebar-user')).toContainText('Nhân Sự UI');
-  await page.locator('.main-nav').getByRole('button',{name:'Thành viên & phân quyền'}).click();
+  await page.locator('.main-nav').getByRole('button',{name:'Tài khoản',exact:true}).click();
   await expect(page.getByRole('button',{name:'Tạo tài khoản',exact:true})).toHaveCount(0);
 });
 

@@ -15,10 +15,31 @@ export const jobPath = (id: string) => `/tuyen-dung/${encodeURIComponent(id)}`;
 export const brandName = (id?: string) => JOB_BRANDS.find(brand => brand.id === id)?.name || 'Super Net';
 export const jobExpired = (job: Job) => !!job.application_deadline && job.application_deadline < dayKey();
 
+function JDText({ text }: { text: string }) {
+  const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  const bullet = /^(?:[-•●▪]|\d+[.)])\s+/u;
+  return lines.length && lines.every(line => bullet.test(line)) ? <ul className="jd-bullets">{lines.map((line,index) => <li key={index}>{line.replace(bullet,'')}</li>)}</ul> : <p>{text}</p>;
+}
+
 export function JDContent({ job }: { job: Job }) {
-  return <div className="jd-content">{[
-    ['Mô tả công việc', job.description], ['Yêu cầu ứng viên', job.requirements], ['Quyền lợi', job.benefits],
-  ].filter(([,text]) => text?.trim()).map(([heading,text]) => <section key={heading}><h2>{heading}</h2><p>{text}</p></section>)}</div>;
+  return <div className="jd-content"><section><h2>Thông tin chung</h2><dl className="jd-general-info">
+    {job.company_name && <div className="full"><dt>Công ty</dt><dd>{job.company_name}</dd></div>}
+    <div><dt>Số lượng</dt><dd>{job.openings} người</dd></div><div><dt>Hình thức</dt><dd>{job.employment_type}</dd></div>
+    <div className="full"><dt>Địa điểm làm việc</dt><dd>{job.location || 'Chưa nhập địa điểm'}</dd></div>
+    {job.working_hours && <div className="full"><dt>Thời gian làm việc</dt><dd>{job.working_hours}</dd></div>}
+  </dl></section>{[
+    ['Mô tả công việc', job.description], ['Yêu cầu ứng viên', job.requirements],
+  ].filter(([,text]) => text?.trim()).map(([heading,text]) => <section key={heading}><h2>{heading}</h2><JDText text={text!}/></section>)}
+    {(job.salary_range || job.benefits) && <section><h2>Mức lương & quyền lợi</h2>{job.salary_range && <p className="jd-salary-emphasis"><strong>Mức lương:</strong> {job.salary_range}</p>}{job.benefits && <JDText text={job.benefits}/>}</section>}
+    <section className="jd-application-details"><h2>Cách thức ứng tuyển</h2>{job.application_instructions && <JDText text={job.application_instructions}/>}
+      {(job.application_email || job.application_zalo || job.application_email_subject) && <dl className="jd-application-contacts">
+        {job.application_email_subject && <div><dt>Tiêu đề email</dt><dd>{job.application_email_subject}</dd></div>}
+        {job.application_email && <div><dt>Email nhận CV</dt><dd><a href={`mailto:${job.application_email}?subject=${encodeURIComponent(job.application_email_subject || '')}`}>{job.application_email}</a></dd></div>}
+        {job.application_zalo && <div><dt>Zalo</dt><dd><a href={`https://zalo.me/${job.application_zalo.replace(/\D/g,'')}`} target="_blank" rel="noreferrer">{job.application_zalo}</a></dd></div>}
+      </dl>}
+      <p>Bạn có thể chọn “Ứng tuyển ngay” để gửi thông tin và CV trực tiếp trên website, không cần tạo tài khoản.</p>
+    </section>
+  </div>;
 }
 
 export function ShareJobLink({ job, onClose }: { job: Job; onClose: () => void }) {
@@ -47,7 +68,7 @@ export function JobsManager({ jobs, editable, onAdd, onEdit, onRefresh, notify }
         {editable && <div className="jd-card-status"><span>Ứng viên xem được khi tin đang tuyển và còn hạn.</span><button className="text-button" disabled={busy === job.id} onClick={() => void toggle(job)}>{busy === job.id ? 'Đang lưu…' : job.status === 'open' ? 'Tạm dừng' : 'Mở lại'}</button></div>}
       </article>;
     })}</div>
-    {!filtered.length && <Empty title={!jobs.length ? 'Tạo JD đầu tiên cho Super Net' : 'Chưa tìm thấy JD phù hợp'}>{!jobs.length ? 'Admin và HR có thể tạo JD để ứng viên xem công việc và gửi hồ sơ.' : 'Thử đổi từ khóa hoặc trạng thái đang lọc.'}</Empty>}
+    {!filtered.length && <Empty title={!jobs.length ? 'Tạo JD đầu tiên cho Super Net' : 'Chưa tìm thấy JD phù hợp'}>{!jobs.length ? 'Các vị trí được đăng tuyển sẽ xuất hiện tại đây.' : 'Thử đổi từ khóa hoặc trạng thái đang lọc.'}</Empty>}
     {share && <ShareJobLink job={share} onClose={() => setShare(null)}/>}
   </>;
 }
