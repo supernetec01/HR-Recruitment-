@@ -8,7 +8,7 @@ const day = new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok'}).format(fu
 async function login(page: Page, login = 'admin') {
   await page.goto('/');
   await page.getByLabel('Tài khoản hoặc email').fill(login);
-  await page.getByLabel('Mật khẩu').fill(secret);
+  await page.getByLabel(/^Mật khẩu(?: \*)?$/).fill(secret);
   await page.getByRole('button',{name:'Đăng nhập',exact:true}).click();
   await expect(page.locator('.sidebar-user')).toBeVisible();
 }
@@ -40,7 +40,7 @@ test('Admin logs in normally and creates an HR account through the management sc
   await dialog.getByLabel('Họ và tên').fill('Nhân Sự UI');
   await dialog.getByLabel('Tên đăng nhập').fill('hr-ui');
   await dialog.getByLabel('Phân quyền').selectOption('hr');
-  await dialog.getByLabel('Mật khẩu').fill(secret);
+  await dialog.getByLabel(/^Mật khẩu(?: \*)?$/).fill(secret);
   await dialog.getByRole('button',{name:'Tạo tài khoản',exact:true}).click();
   await expect(page.locator('.members-table').getByText('hr-ui',{exact:true})).toBeVisible();
   await page.screenshot({path:test.info().outputPath('accounts.png'),fullPage:true,animations:'disabled'});

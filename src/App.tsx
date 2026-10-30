@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, NavLink, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowDownToLine, ArrowRight, ArrowUpRight, Bell, BriefcaseBusiness, CalendarDays, ChartNoAxesCombined, Check, CheckCheck, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, Clock3, ExternalLink, FileCheck2, FilePlus2, FileText, Filter, GitMerge, Globe2, LayoutDashboard, LayoutGrid, Leaf, List, LoaderCircle, LogOut, Menu, MoreHorizontal, Plus, Search, Settings2, ShieldCheck, Sparkles, Upload, UserRoundCheck, UsersRound, X } from 'lucide-react';
+import { ArrowDownToLine, ArrowRight, ArrowUpRight, Bell, BriefcaseBusiness, CalendarDays, ChartNoAxesCombined, Check, CheckCheck, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, Clock3, ExternalLink, FileCheck2, FilePlus2, FileText, Filter, GitMerge, Globe2, LayoutDashboard, LayoutGrid, Leaf, List, LoaderCircle, LogOut, Menu, MoreHorizontal, Plus, Search, Settings2, ShieldCheck, Sparkles, Upload, UserRoundCheck, UsersRound, X, Eye, EyeOff } from 'lucide-react';
 import { api, ApiError, date, errorMessage, json, SOURCES, STAGES, time } from './api';
 import { Alert, Avatar, Empty, Field, Modal, Spinner, Stage } from './ui';
 import { CandidateForm, InterviewForm, JobForm, ResolveForm } from './forms';
@@ -155,7 +155,36 @@ function Reports({ candidates,jobs }: { candidates: Candidate[]; jobs: Job[] }) 
 }
 
 function Login({ error: initialError, demo, needsSetup, onLogin }: { error: string; demo: boolean; needsSetup: boolean; onLogin: (u: User) => void }) {
-  const [error,setError] = useState(initialError), [busy,setBusy] = useState(false);
-  async function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const data = Object.fromEntries(new FormData(event.currentTarget)); setBusy(true); try { const result = await api<{user:User}>('/login',{method:'POST',body:json(data)}); onLogin(result.user); } catch(err) { setError(errorMessage(err)); } finally { setBusy(false); } }
-  return <div className="login-page"><section className="login-brand"><Brand light/><div><span className="eyebrow">PEOPLE FIRST. ALWAYS.</span><h1>Đúng người.<br/>Đúng cơ hội.<br/><em>Cùng tiến xa.</em></h1><p>Không gian tuyển dụng tập trung<br/>dành cho đội ngũ Super Net.</p></div><span className="login-caption">Kết nối nhân tài. Kiến tạo tương lai.</span></section><section className="login-form"><div><span className="eyebrow">SUPER NET WORKSPACE</span><h2>Chào mừng trở lại</h2><p>Đăng nhập bằng tài khoản nội bộ do quản trị viên cấp.</p>{needsSetup && <div className="info-note">Chưa có quản trị viên. Người quản trị chạy <code>npm run setup</code> trên máy chủ để thiết lập lần đầu.</div>}<form onSubmit={submit}><Field label="Tài khoản hoặc email" required><input name="login" required autoComplete="username" maxLength={254} placeholder="Nhập tài khoản được Admin cấp"/></Field><Field label="Mật khẩu" required><input type="password" name="password" required autoComplete="current-password" maxLength={256}/></Field>{error && <Alert>{error}</Alert>}<button className="button primary full-width" disabled={busy}>{busy ? <LoaderCircle size={17} className="spin"/> : <ArrowRight size={17}/>}Đăng nhập</button></form>{demo && <button className="button secondary full-width" onClick={async () => { try { const result = await api<{user:User}>('/demo-session',{method:'POST',body:json({role:'hr'})}); onLogin(result.user); } catch(err) { setError(errorMessage(err)); } }}>Vào không gian demo</button>}<Link className="back-link" to="/tuyen-dung">Bạn đang tìm việc? Xem cơ hội<ArrowUpRight size={15}/></Link></div></section></div>;
+  const [error, setError] = useState(initialError), [busy, setBusy] = useState(false), [setupRequired, setSetupRequired] = useState(needsSetup), [showPassword, setShowPassword] = useState(false);
+  useEffect(() => { setSetupRequired(needsSetup); }, [needsSetup]);
+  async function refreshSetup() {
+    try { const config = await api<{ needsSetup: boolean }>('/config'); setSetupRequired(config.needsSetup); if (!config.needsSetup) setError(''); }
+    catch (err) { setError(errorMessage(err)); }
+  }
+  useEffect(() => {
+    if (!setupRequired) return;
+    const timer = setInterval(() => void refreshSetup(), 5000);
+    return () => clearInterval(timer);
+  }, [setupRequired]);
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); if (busy) return;
+    const data = Object.fromEntries(new FormData(event.currentTarget)); setBusy(true); setError('');
+    try { const result = await api<{user:User}>('/login', { method: 'POST', body: json(data) }); onLogin(result.user); }
+    catch (err) {
+      if (err instanceof ApiError && err.code === 'ADMIN_SETUP_REQUIRED') setSetupRequired(true);
+      setError(errorMessage(err));
+    } finally { setBusy(false); }
+  }
+  return <div className="login-page"><section className="login-brand"><Brand light/><div><span className="eyebrow">PEOPLE FIRST. ALWAYS.</span><h1>Đúng người.<br/>Đúng cơ hội.<br/><em>Cùng tiến xa.</em></h1><p>Không gian tuyển dụng tập trung<br/>dành cho đội ngũ Super Net.</p></div><span className="login-caption">Kết nối nhân tài. Kiến tạo tương lai.</span></section>
+    <section className="login-form"><div><span className="eyebrow">SUPER NET WORKSPACE</span><h2>{setupRequired ? 'Khởi tạo tài khoản quản trị' : 'Chào mừng trở lại'}</h2><p>{setupRequired ? 'Máy chủ này chưa có Admin. Hoàn tất bước đầu tiên trước khi đăng nhập.' : 'Đăng nhập bằng tài khoản nội bộ do quản trị viên cấp.'}</p>
+      {setupRequired ? <div className="first-run-card" role="status"><h3>Thực hiện trên máy đang chạy website</h3><ol><li>Trong Terminal VS Code của máy chủ, chạy <code>npm run setup</code>.</li><li>Chọn tài khoản <strong>admin</strong> và nhập mật khẩu quản trị bạn đã chọn. Mật khẩu không hiển thị khi gõ.</li><li>Quay lại trang này; biểu mẫu đăng nhập tự mở khi tài khoản đã sẵn sàng.</li></ol><p>Tài khoản được lưu riêng trong database của máy chủ, không đi theo mã nguồn GitHub. Không cần tạo lại nếu đã có Admin.</p><button className="button secondary full-width" onClick={() => void refreshSetup()}>Kiểm tra lại thiết lập</button></div> : <form onSubmit={submit}>
+        <Field label="Tài khoản hoặc email" required><input name="login" required autoComplete="username" maxLength={254} placeholder="Nhập tài khoản được Admin cấp"/></Field>
+        <div className="password-control"><Field label="Mật khẩu" required><input type={showPassword ? 'text' : 'password'} name="password" required autoComplete="current-password" maxLength={128}/></Field><button className="icon-button" type="button" aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'} aria-pressed={showPassword} onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}</button></div>
+        {error && <Alert>{error}</Alert>}<button className="button primary full-width" disabled={busy}>{busy ? <LoaderCircle size={17} className="spin"/> : <ArrowRight size={17}/>}Đăng nhập</button>
+      </form>}
+      {setupRequired && error && <Alert>{error}</Alert>}
+      {demo && <button className="button secondary full-width" onClick={async () => { try { const result = await api<{user:User}>('/demo-session', { method: 'POST', body: json({role:'hr'}) }); onLogin(result.user); } catch (err) { setError(errorMessage(err)); } }}>Vào không gian demo</button>}
+      <Link className="back-link" to="/tuyen-dung">Bạn đang tìm việc? Xem cơ hội<ArrowUpRight size={15}/></Link>
+    </div></section>
+  </div>;
 }

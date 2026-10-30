@@ -18,5 +18,6 @@ export default defineConfig({
   webServer: [
     { command: 'node server/index.mjs', url: 'http://127.0.0.1:3100/api/v1/health', reuseExistingServer: false, env: { PORT: '3100', DEMO_MODE: '1', DATA_DIR: dataDir } },
     { command: 'node tests/browser-internal/server.mjs', url: 'http://127.0.0.1:3110/api/v1/health', reuseExistingServer: false, env: { DATA_DIR: internalDataDir, SUPERNET_E2E_PASSWORD: testPassword } },
+    { command: 'node tests/browser-internal/vite-server.mjs', url: 'http://127.0.0.1:3120/api/v1/health', reuseExistingServer: false, env: { NODE_ENV: 'development' } },
   ],
 });

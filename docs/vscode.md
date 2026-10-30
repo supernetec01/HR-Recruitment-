@@ -17,11 +17,10 @@ Trong VS Code → Terminal → New Terminal:
 ```bash
 node --version
 npm ci
-npm run setup
 npm run dev
 ```
 
-Node phải từ v24. Setup chọn tên đăng nhập mặc định **admin**, nhập mật khẩu quản trị do công ty chỉ định, tối thiểu 12 ký tự. Mật khẩu không hiện khi gõ và không ghi vào source. Chỉ setup lần đầu; khi đã có Admin phải đổi mật khẩu trên giao diện, không ghi đè bằng setup.
+Node phải từ v24. Khi khởi động lần đầu trong Terminal, ứng dụng hỏi tên đăng nhập mặc định **admin** và mật khẩu quản trị công ty đã chọn (từ 12 ký tự). Mật khẩu không hiện khi gõ và không ghi vào source. Khi đã có Admin thì không hỏi lại và không đổi mật khẩu. Nếu cần khởi tạo riêng trước khi chạy, dùng `npm run setup`.
 
 Nhập `http://localhost:5173` vào trình duyệt trên máy này để đăng nhập. Đây là địa chỉ chạy trên máy bạn, không phải website đã triển khai. Nội bộ không tự đăng nhập hoặc cho tự đổi vai trò. `.env.example` là tài liệu và không tự nạp.
 
@@ -135,3 +134,19 @@ Các máy khác dùng hostname/IP máy chủ và cổng 3000, không dùng local
 | Không đặt được lịch | Kiểm tra liên hệ/consent, thời gian tương lai, cùng ngày, thời lượng và xung đột. |
 
 AI, email, phê duyệt offer, quét virus tự động và các giới hạn còn lại: xem [README](../README.md). Hướng dẫn Windows/macOS chưa được kiểm chứng trên máy Windows/macOS thật.
+
+## Sửa lỗi đăng nhập tại địa chỉ LAN
+
+Nếu đang dùng địa chỉ `http://192.168.1.5:5173`, cập nhật source rồi dừng tiến trình cũ bằng Ctrl+C. Chạy lại `npm run dev` trên máy `192.168.1.5`; khi máy mới chưa có Admin, hoàn tất các câu hỏi khởi tạo trong Terminal, sau đó đăng nhập. Trang sẽ tạm hiện hướng dẫn thay vì biểu mẫu đăng nhập trong khi chưa có Admin.
+
+```bash
+git pull --ff-only
+npm ci
+npm run dev
+```
+
+Vite phải được khởi động lại sau cập nhật để nạp cấu hình proxy mới. Không đổi IP thành localhost khi truy cập từ một máy khác. Vite chuyển tiếp địa chỉ LAN/cổng sang API một cách tự động; không cần mở cổng API 3000 cho các máy khác nếu đang dùng Vite ở 5173.
+
+Sau reverse proxy HTTPS, đặt `APP_ORIGIN` đúng origin, giữ `X-Forwarded-Host`/`X-Forwarded-Proto` từ proxy và đặt `TRUST_PROXY` chỉ cho proxy thực. Đọc cấu hình trong README. Lỗi nguồn không hợp lệ vẫn được chặn; không bật CORS cho mọi website hay tắt kiểm tra nguồn.
+
+Chữ được tăng 20% ở desktop lẫn điện thoại. Nếu vẫn thấy bản cũ sau khi khởi động lại, tải lại trang bằng Ctrl+F5 (macOS Cmd+Shift+R).

@@ -9,6 +9,8 @@ import { resolve } from 'node:path';
 import { openDatabase, id, now, hash, transaction, audit, duplicateMatches, completeness, normalizeEmail, normalizePhone, verifyPassword, STAGES, SOURCES } from './db.mjs';
 import { publicUser, normalizeUsername } from './accounts.mjs';
 import { registerInternalRoutes } from './internal.mjs';
+import { protectOrigins } from './origin.mjs';
+import { hasAdministrator } from './accounts.mjs';
 
 const text = (max = 200) => z.string().trim().max(max).default('');
 const emailValue = z.string().trim().max(254).pipe(z.union([z.literal(''), z.email()]));
@@ -37,27 +39,17 @@ const patchSchema = z.object({
 });
 const fail = (status, message, extra = {}) => { const error = new Error(message); error.status = status; Object.assign(error, extra); throw error; };
 
-export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.data/internal') } = {}) {
+export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.data/internal'), appOrigin = process.env.APP_ORIGIN, trustProxy = process.env.TRUST_PROXY || 'loopback', production = process.env.NODE_ENV === 'production' } = {}) {
   const db = openDatabase(dataDir, demo);
   const app = express();
   app.disable('x-powered-by');
   app.use(helmet({ contentSecurityPolicy: { directives: {
     defaultSrc: ["'self'"], scriptSrc: ["'self'"], styleSrc: ["'self'", "'unsafe-inline'"],
     imgSrc: ["'self'", 'data:', 'blob:'], fontSrc: ["'self'"], connectSrc: ["'self'"], frameSrc: ["'self'", 'blob:'], objectSrc: ["'none'"], upgradeInsecureRequests: null,
-  } }, crossOriginEmbedderPolicy: false, strictTransportSecurity: process.env.NODE_ENV === 'production' ? undefined : false }));
+  } }, crossOriginEmbedderPolicy: false, strictTransportSecurity: production ? undefined : false }));
   app.use(express.json({ limit: '64kb' }));
   app.use('/api', (req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
-  // Origin checks protect both cookie-authenticated and public mutations. Internal mutations also require a custom header.
-  app.use('/api', (req, res, next) => {
-    if (!['GET','HEAD','OPTIONS'].includes(req.method)) {
-      const origin = req.get('origin');
-      const allowed = new Set([process.env.APP_ORIGIN, `http://${req.get('host')}`, `https://${req.get('host')}`]);
-      if (demo) { allowed.add('http://localhost:5173'); allowed.add('http://127.0.0.1:5173'); }
-      if (origin && !allowed.has(origin)) return res.status(403).json({ message: 'Nguồn yêu cầu không được phép.' });
-      if (!req.path.startsWith('/v1/public/') && req.get('X-Requested-With') !== 'SuperNet') return res.status(403).json({ message: 'Thiếu xác nhận nguồn yêu cầu.' });
-    }
-    next();
-  });
+  protectOrigins(app, { appOrigin, trustProxy, production });
   const limiter = rateLimit({ windowMs: 15 * 60000, limit: demo ? 300 : 30, standardHeaders: 'draft-8', legacyHeaders: false, message: { message: 'Bạn thao tác quá nhanh. Vui lòng thử lại sau.' } });
   app.use('/api/v1/public', limiter);
   app.use('/api/v1/login', limiter);
@@ -84,7 +76,7 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
     const token = randomBytes(32).toString('hex');
     db.prepare('DELETE FROM sessions WHERE expires_at <= ?').run(now());
     db.prepare('INSERT INTO sessions VALUES(?,?,?)').run(hash(token), user.id, new Date(Date.now() + 8 * 3600000).toISOString());
-    res.cookie('sn_session', token, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', maxAge: 8 * 3600000, path: '/' });
+    res.cookie('sn_session', token, { httpOnly: true, sameSite: 'lax', secure: production, maxAge: 8 * 3600000, path: '/' });
     return publicUser(user);
   }
   function validateFile(file) {
@@ -162,7 +154,7 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
   }
 
   app.get('/api/v1/health', (req, res) => { db.prepare('SELECT 1').get(); res.json({ status: 'ok', demo }); });
-  app.get('/api/v1/config', (req, res) => res.json({ demo, needsSetup: !demo && !db.prepare("SELECT id FROM users WHERE role='admin' AND active=1 AND is_demo=0 AND id!='public'").get(), policyVersion: 'recruitment-v1' }));
+  app.get('/api/v1/config', (req, res) => res.json({ demo, needsSetup: !demo && !hasAdministrator(db), policyVersion: 'recruitment-v1' }));
   app.post('/api/v1/demo-session', (req, res) => {
     if (!demo) return res.sendStatus(404);
     const role = z.enum(['hr','admin','boss']).parse(req.body.role || 'hr');
@@ -170,6 +162,7 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
     res.json({ user: session(res, user) });
   });
   app.post('/api/v1/login', (req, res) => {
+    if (!hasAdministrator(db)) return res.status(503).json({ code: 'ADMIN_SETUP_REQUIRED', message: 'Máy chủ này chưa có tài khoản quản trị. Hãy hoàn tất bước khởi tạo Admin trong Terminal của máy chủ rồi đăng nhập.' });
     const input = z.object({ login: z.string().trim().min(1).max(254), password: z.string().min(1).max(128) }).parse({ ...req.body, login: req.body.login || req.body.email });
     const login = normalizeUsername(input.login);
     const user = db.prepare("SELECT * FROM users WHERE (username=? COLLATE NOCASE OR email=? COLLATE NOCASE) AND is_demo=0 AND active=1 AND id!='public'").get(login, login);

@@ -18,7 +18,10 @@ export function createAccount(db, { username, name, email = '', password, role =
   audit(db, null, actorId || userId, 'user.created', { userId, username: login, role });
   return publicUser(db.prepare('SELECT * FROM users WHERE id=?').get(userId));
 }
+export const hasAdministrator = db => !!db.prepare("SELECT id FROM users WHERE role='admin' AND active=1 AND is_demo=0 AND id!='public'").get();
 export function bootstrapAdmin(db, input) {
-  if (db.prepare("SELECT id FROM users WHERE role='admin' AND active=1 AND is_demo=0 AND id!='public'").get()) throw new Error('Đã có quản trị viên. Đăng nhập để quản lý tài khoản; không ghi đè mật khẩu đã có.');
-  return transaction(db, () => createAccount(db, { ...input, username: input.username || 'admin', name: input.name || 'Quản trị viên Super Net', role: 'admin' }));
+  return transaction(db, () => {
+    if (hasAdministrator(db)) throw new Error('Đã có quản trị viên. Đăng nhập để quản lý tài khoản; không ghi đè mật khẩu đã có.');
+    return createAccount(db, { ...input, username: input.username || 'admin', name: input.name || 'Quản trị viên Super Net', role: 'admin' });
+  });
 }

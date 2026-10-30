@@ -12,11 +12,10 @@ Cài Git, **Node.js 24+** và VS Code. Trong Terminal:
 git clone https://github.com/supernetec01/HR-Recruitment-.git
 cd HR-Recruitment-
 npm ci
-npm run setup
 npm run dev
 ```
 
-`setup` chỉ chạy ở lần cài đầu tiên: tên đăng nhập mặc định `admin`, nhập mật khẩu quản trị do công ty chỉ định. Mật khẩu không hiển thị khi gõ, không có mật khẩu mặc định trong source, chỉ lưu băm scrypt trong SQLite. Nếu đã có Admin, setup từ chối ghi đè; quản lý mật khẩu bằng giao diện.
+`npm run dev` sẽ hướng dẫn khởi tạo Admin ngay trong Terminal nếu máy mới chưa có tài khoản. Tên mặc định là `admin`, nhập mật khẩu quản trị công ty đã chọn; không hiển thị khi gõ. Có thể chủ động chạy `npm run setup` trước. Nếu đã có Admin, khởi động/setup giữ nguyên tài khoản và mật khẩu. Không có mật khẩu mặc định hardcode trong source; chỉ lưu băm scrypt trong SQLite.
 
 `dev` chạy API cổng 3000 và Vite cổng 5173. Nhập `http://localhost:5173` trong trình duyệt **máy đang chạy dự án** và đăng nhập. Đây là địa chỉ chạy tại máy bạn, không phải website đã triển khai. Không cần `.env`; `.env.example` chỉ là tài liệu và không tự nạp.
 
@@ -81,3 +80,13 @@ TypeScript kiểm tra frontend, cấu hình và test trình duyệt. Test API d�
 ## Phạm vi còn lại
 
 Phân quyền nội bộ và quy trình hẹn phỏng vấn đã triển khai. AI đọc/dịch CV, email/SMS tự động, đồng bộ lịch ngoài, phê duyệt offer/tuyển dụng cuối cùng, PostgreSQL/S3, quét virus tự động, SSO, quyền theo phòng ban/từng hồ sơ, chính sách xóa dữ liệu và backup tự động chưa tích hợp. Hệ thống không tự quyết định tuyển dụng hay gửi CV sang AI. Hướng dẫn Windows/macOS hỗ trợ cấu hình đa nền tảng nhưng chưa được kiểm chứng trên máy Windows/macOS thật.
+
+## Đăng nhập qua mạng LAN và proxy
+
+Với máy chủ ở `192.168.1.5`, mở địa chỉ `http://192.168.1.5:5173` trong khi chạy `npm run dev`. Vite tự chuyển tiếp hostname/cổng frontend và giao thức sang API, không cần hardcode địa chỉ IP này trong source. IP khác trong cùng cách triển khai cũng được xử lý tương tự. Các header do phía gọi tự gán sẽ bị Vite ghi đè.
+
+Backend chỉ tin header chuyển tiếp từ proxy tin cậy (mặc định loopback, dành cho Vite/Nginx cùng máy). Reverse proxy ở máy/container khác cần đặt `TRUST_PROXY` đúng IP/CIDR proxy và `APP_ORIGIN` đúng origin website, ví dụ origin gồm giao thức, hostname và cổng, không có đường dẫn. Không dùng wildcard hoặc tin mọi proxy.
+
+Nginx cùng máy nên giữ `Host $http_host`, `X-Forwarded-Host $http_host`, `X-Forwarded-Proto $scheme`. HTTPS production vẫn dùng cookie Secure; `npm run dev` dùng môi trường development cho HTTP nội bộ. Kiểm tra nguồn trái phép và phân quyền không bị tắt để khắc phục lỗi đăng nhập.
+
+Nếu trang báo chưa có Admin, đó là database của máy đang chạy chưa được khởi tạo, không phải lỗi mật khẩu. Chạy lại `npm run dev` trong Terminal tương tác hoặc `npm run setup`; trang sẽ tự nhận biết sau khi Admin sẵn sàng. Cỡ chữ toàn giao diện đã tăng 20% (biến CSS `--text-scale: 1.2`), không phóng to toàn bộ trang bằng zoom.
