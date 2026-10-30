@@ -49,12 +49,12 @@ test('HR saves an incomplete candidate; received date differs from entry date', 
   assert.notEqual(result.body.candidate.created_at,result.body.candidate.received_at);
   assert.equal(result.body.candidate.creator_name,'Linh Nguyễn');
 });
-test('a file-only intake can be saved and is quarantined', async () => {
+test('a file-only intake is immediately downloadable by staff without marking it reviewed', async () => {
   const result = await request('/candidates',{method:'POST',idem:randomUUID(),form:form({source:'Email'})});
   assert.equal(result.status,200); assert.equal(result.body.candidate.full_name,'');
   assert.equal(result.body.candidate.documents[0].review_status,'quarantined');
   const docId = result.body.candidate.documents[0].id;
-  assert.equal((await request(`/documents/${docId}/download`)).status,423);
+  assert.equal((await request(`/documents/${docId}/download`)).status,200);
   assert.equal((await request(`/documents/${docId}/download`,{publicRequest:true})).status,401);
 });
 test('normalized +84 phone and email trigger HR confirmation; no silent merge or duplicate', async () => {
@@ -151,7 +151,7 @@ test('expired and revoked links cannot be used; withdrawn consent revokes active
   assert.equal((await request(`/candidates/${candidateId}/update-links`,{method:'POST',data:{hours:1}})).status,409);
   await request(`/candidates/${candidateId}`,{method:'PATCH',data:{consentStatus:'granted',consentEvidence:'Ứng viên xác nhận qua email ngày hôm nay'}});
 });
-test('document approval requires evidence and is recorded before authenticated download', async () => {
+test('optional manual review still requires evidence and is audited separately from download access', async () => {
   const doc = (await request(`/candidates/${candidateId}`)).body.documents[0];
   assert.equal((await request(`/documents/${doc.id}/review`,{method:'POST',data:{confirmed:true,evidence:'short'}})).status,400);
   assert.equal((await request(`/documents/${doc.id}/review`,{method:'POST',data:{confirmed:true,evidence:'Đã kiểm tra tài liệu bởi HR bằng công cụ an toàn nội bộ.'}})).status,200);

@@ -53,7 +53,7 @@ before(async () => {
 });
 after(async () => { await new Promise(resolve => server.close(resolve)); db.close(); rmSync(directory,{recursive:true,force:true}); });
 
-test('Interviewer requests an interview with a pending CV and nominates another interviewer without opening it', async () => {
+test('Interviewer can read a newly received CV and nominate another interviewer without changing review metadata', async () => {
   const profile = await candidate();
   const idem = randomUUID(), send = () => request(`/applications/${profile.applications[0].id}/interview-requests`,{session:interviewer,method:'POST',idem,data:{documentId:profile.documents[0].id,interviewerId:otherUser.id,notes:'CV phù hợp để trao đổi vòng đầu.'}});
   const first = await send(); assert.equal(first.status,200); assert.deepEqual((await send()).body,first.body);
@@ -62,7 +62,9 @@ test('Interviewer requests an interview with a pending CV and nominates another 
   const queue = (await request('/interview-requests',{session:hr})).body.find(row => row.id === first.body.request.id);
   assert.equal(queue.preferred_interviewer_name,otherUser.name);
   assert.equal(db.prepare('SELECT review_status FROM documents WHERE id=?').get(profile.documents[0].id).review_status,'quarantined');
-  assert.equal((await request(`/documents/${profile.documents[0].id}/preview`,{session:interviewer})).status,423);
+  const preview = await fetch(`${base}/api/v1/documents/${profile.documents[0].id}/preview`, { headers: { Cookie: interviewer } });
+  assert.equal(preview.status,200);
+  assert.deepEqual(Buffer.from(await preview.arrayBuffer()), pdf);
   assert.equal((await request(`/interview-requests/${first.body.request.id}`,{session:other,method:'PATCH',data:{reason:'Không phải yêu cầu do tôi tạo.'}})).status,403);
 });
 test('Interviewer can review profiles but cannot change accounts, candidate data, JDs, file approval or schedules', async () => {

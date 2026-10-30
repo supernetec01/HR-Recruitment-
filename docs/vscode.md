@@ -57,8 +57,8 @@ Với máy chủ hiện tại, mở `http://192.168.1.5:5173/tuyen-dung`. Địa
 
 1. Admin/HR đăng JD tại **Vị trí tuyển dụng → Tạo JD tuyển dụng**. Không gian mới không có dữ liệu giả.
 2. HR dùng **Quản lý ứng viên → Thêm ứng viên / Upload CV**. Nhập những gì đã có, chọn nguồn, ngày nhận thực tế và vị trí; có thể lưu thiếu thông tin.
-3. CV mới cách ly. HR kiểm tra an toàn bằng quy trình bên ngoài rồi vào **CV & tài liệu → Ghi nhận kiểm tra** để ghi căn cứ. Chưa có quét virus tự động. Sếp sau đó xem PDF trực tiếp hoặc tải DOCX.
-4. Sếp/Người phỏng vấn mở **Tổng quan** của hồ sơ → **Hẹn phỏng vấn**, chọn vị trí, phiên bản CV, **Người phỏng vấn đề xuất** và ghi chú gửi HR. Có thể gửi yêu cầu khi CV chưa được đánh dấu kiểm tra; tài liệu vẫn chờ kiểm tra và chưa mở/tải được cho đến khi ghi nhận kiểm tra. Danh sách CV không còn bị bỏ trống chỉ vì chưa kiểm tra.
+3. Vào **CV & tài liệu → Xem CV** hoặc **Tải xuống** ngay sau khi nhận hồ sơ. PDF xem trực tiếp; DOCX hiển thị nội dung văn bản, tải bản gốc để xem đầy đủ bố cục/hình ảnh. Có thể mở lại và tải mọi phiên bản đã lưu. **Ghi nhận kiểm tra** là thao tác tùy chọn, không bắt buộc để xem/tải.
+4. Sếp/Người phỏng vấn mở **Tổng quan** của hồ sơ → **Hẹn phỏng vấn**, chọn vị trí, phiên bản CV, **Người phỏng vấn đề xuất** và ghi chú gửi HR. Có thể gửi yêu cầu và xem/tải khi CV chưa được đánh dấu kiểm tra; quyền truy cập vẫn yêu cầu tài khoản nội bộ đang hoạt động. Danh sách CV không còn bị bỏ trống chỉ vì chưa kiểm tra.
 5. Yêu cầu được lưu cùng người chọn, thời điểm, CV và hiển thị tại dashboard/**Yêu cầu phỏng vấn**. Đây chưa phải giờ hẹn đã xác nhận hoặc quyết định tuyển dụng.
 
 Ứng viên tự gửi qua `/tuyen-dung`. Hồ sơ nghi trùng vào Chờ xác minh để HR xác nhận; không tự ghi đè hồ sơ/CV cũ. Link bổ sung do HR tạo có hạn và dùng một lần, thêm đúng hồ sơ. Link có hostname localhost chỉ dùng trên máy đang chạy ứng dụng; khi dùng chung cần mở qua hostname/IP/domain máy chủ.
@@ -153,7 +153,7 @@ Các máy khác dùng hostname/IP máy chủ và cổng 3000, không dùng local
 | Đổi máy không còn tài khoản | Khôi phục database riêng hoặc setup mới; dữ liệu không đồng bộ qua Git. |
 | Cổng bị chiếm | Dừng phiên dev/demo/debug/test cũ trước khi chạy lại. |
 | Đăng nhập HTTP không giữ phiên | Không bật NODE_ENV=production khi thử HTTP trực tiếp. |
-| Không xem được CV | HR kiểm tra an toàn; PDF xem trực tiếp, DOCX tải xuống. |
+| Không xem/tải được CV | Đăng nhập lại nếu hết phiên. Cập nhật bản mới để sửa lỗi đường dẫn `.data`; nếu báo thiếu tệp, khôi phục đúng thư mục documents từ bản sao lưu. Không xóa `.data/`. PDF xem trực tiếp, DOCX xem văn bản hoặc tải bản gốc. |
 | CV PDF hợp lệ bị từ chối vì dòng trống đầu file | Đã hỗ trợ khoảng trắng/BOM trước header PDF; giữ nguyên tệp, chọn lại và tải lên sau khi cập nhật. |
 | Danh sách CV trong Hẹn phỏng vấn bị trống | Cập nhật bản mới; CV chờ kiểm tra cũng được chọn gửi yêu cầu. Hồ sơ chưa có CV cần bổ sung file. |
 | JD không hiện công khai | Kiểm tra trạng thái Đang tuyển, hạn nhận hồ sơ và bộ lọc ngành hàng. |

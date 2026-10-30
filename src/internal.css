@@ -214,6 +214,13 @@ body, .public-page { background: var(--bg); color: var(--text); }
 .dashboard-bottom > span { display: flex; align-items: center; gap: 6px; }
 .pdf-preview { height: min(70vh,760px); padding: 15px; background: #f1f5f8; }
 .pdf-preview iframe { width: 100%; height: 100%; border: 1px solid #cbd9e3; border-radius: 5px; background: white; }
+.docx-preview { max-height: 65vh; overflow-y: auto; }
+.docx-preview pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.8; margin-top: 16px; color: #31566d; }
+.document-actions { min-width: 0; }
+.document-actions > .hero-actions { flex-wrap: wrap; }
+.document-actions > .alert { max-width: 340px; margin-top: 10px; }
+.submission-document { margin-top: 12px; padding-top: 10px; border-top: 1px solid #e1ebf1; }
+.submission-document > strong { display: block; font-size: 13px; overflow-wrap: anywhere; margin-bottom: 8px; }
 @media(max-width:1250px) {
   .brand strong { font-size: calc(21px * var(--text-scale, 1.2)); }
   .brand-symbol { width: 40px; height: 39px; }

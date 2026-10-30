@@ -24,7 +24,7 @@ test('HR creates an incomplete record, detects duplicate, links CV, and preserve
   await expect(page.getByRole('heading',{name:'Nguyễn E2E Minh',exact:true})).toBeVisible();
   await page.getByRole('button',{name:'CV & tài liệu (1)',exact:true}).click();
   await expect(page.getByText('CV-cap-nhat.pdf',{exact:true})).toBeVisible();
-  await expect(page.getByText('Đang cách ly · Chờ kiểm tra',{exact:true})).toBeVisible();
+  await expect(page.getByText('Đã nhận CV',{exact:true})).toBeVisible();
   expect(errors).toEqual([]);
 });
 

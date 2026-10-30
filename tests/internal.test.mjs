@@ -88,7 +88,7 @@ test('HR receives a CV, completes the profile and verifies the document for Boss
   form.set('file',new Blob([Buffer.from('%PDF-1.4\nCV internal test\n%%EOF')],{type:'application/pdf'}),'CV.pdf');
   const result = await request('/candidates',{session:hr,method:'POST',form,idem:randomUUID()});
   assert.equal(result.status,200); candidate = result.body.candidate; appId = candidate.applications[0].id; document = candidate.documents[0];
-  assert.equal((await request(`/documents/${document.id}/preview`,{session:boss})).status,423);
+  assert.equal((await request(`/documents/${document.id}/preview`,{session:boss})).status,200);
   assert.equal((await request(`/applications/${appId}/interview-requests`,{session:boss,method:'POST',idem:randomUUID(),data:{documentId:'unknown-document'}})).status,409);
   assert.equal((await request(`/documents/${document.id}/review`,{session:hr,method:'POST',data:{confirmed:true,evidence:'Tài liệu đã qua kiểm tra an toàn bởi HR trong kiểm thử.'}})).status,200);
 });

@@ -26,7 +26,7 @@ Xem [hướng dẫn VS Code và sử dụng](docs/vscode.md), [thiết kế dữ
 | Chức năng | Admin | Sếp | Người phỏng vấn | HR |
 | --- | --- | --- | --- | --- |
 | Tạo user, đổi quyền, khóa/mở, đặt lại mật khẩu | Có | — | — | — |
-| Xem hồ sơ, CV đã kiểm tra, dashboard/báo cáo | Có | Có | Có | Có |
+| Xem hồ sơ, xem/tải CV, dashboard/báo cáo | Có | Có | Có | Có |
 | Tiếp nhận/sửa hồ sơ, upload CV, xác minh trùng | Có | — | — | Có |
 | Chọn CV, yêu cầu Hẹn phỏng vấn, đề xuất người phỏng vấn | Có | Có | Có | — |
 | Nhận yêu cầu, liên hệ, tạo/đổi/hủy lịch | Có | — | — | Có |
@@ -40,8 +40,8 @@ Chỉ Admin thấy **Thành viên & phân quyền**, danh sách tài khoản và
 ## Quy trình sử dụng
 
 1. **Admin:** Thành viên & phân quyền → Tạo tài khoản. Điền họ tên, tên đăng nhập, vai trò, mật khẩu từ 12 ký tự; email không bắt buộc. Có thể cấp vai trò Người phỏng vấn, Sếp hoặc HR. Admin/HR vào Vị trí tuyển dụng → Tạo JD tuyển dụng để đăng tin.
-2. **HR:** Thêm ứng viên / Upload CV từ Facebook, email, Zalo… Có thể lưu thiếu thông tin; giữ nguồn và ngày nhận thực tế. PDF/DOCX tối đa 10 MB, được cách ly. HR kiểm tra an toàn qua quy trình bên ngoài rồi ghi căn cứ tại CV & tài liệu → Ghi nhận kiểm tra. Chưa có quét virus tự động.
-3. **Sếp/Người phỏng vấn:** Mở hồ sơ → Hẹn phỏng vấn, chọn vị trí, phiên bản CV, Người phỏng vấn đề xuất và ghi chú. CV đang chờ kiểm tra cũng được gắn vào yêu cầu; việc gửi yêu cầu không tự cho phép mở/tải tài liệu hoặc đổi trạng thái kiểm tra. Đây là lựa chọn ứng viên cho vòng phỏng vấn, chưa phải quyết định tuyển dụng cuối cùng.
+2. **HR:** Thêm ứng viên / Upload CV từ Facebook, email, Zalo… Có thể lưu thiếu thông tin; giữ nguồn và ngày nhận thực tế. PDF/DOCX tối đa 10 MB, lưu bản gốc theo phiên bản. Nhân sự đã đăng nhập có thể **Xem CV** hoặc **Tải xuống** ngay sau khi tiếp nhận, kể cả CV cũ chưa ghi nhận kiểm tra. PDF xem trực tiếp; DOCX hiển thị nội dung văn bản trong trình duyệt, tải bản gốc để giữ đầy đủ bố cục/hình ảnh. Ghi nhận kiểm tra là tùy chọn, không chặn quyền đọc/tải và không có nghĩa là đã quét virus tự động.
+3. **Sếp/Người phỏng vấn:** Mở hồ sơ → Hẹn phỏng vấn, chọn vị trí, phiên bản CV, Người phỏng vấn đề xuất và ghi chú. CV mới nhận cũng được gắn vào yêu cầu; có thể xem/tải trong mục CV & tài liệu mà không cần đánh dấu kiểm tra trước. Đây là lựa chọn ứng viên cho vòng phỏng vấn, chưa phải quyết định tuyển dụng cuối cùng.
 4. **HR:** Nhận yêu cầu trên dashboard/Yêu cầu phỏng vấn. Liên hệ ứng viên rồi chọn Liên hệ & xếp lịch: ngày, giờ bắt đầu, thời lượng 15–240 phút, người phỏng vấn và địa điểm. Người được đề xuất được chọn sẵn, HR có thể điều chỉnh. Nếu hồ sơ chưa xác nhận dữ liệu, nhập Nội dung đã trao đổi và đánh dấu Đã liên hệ ứng viên và thống nhất việc hẹn phỏng vấn. Việc này lưu riêng, không tự đổi consent sang đã đồng ý. Hồ sơ đã rút lại sự đồng ý cần ghi nhận sự đồng ý mới trước khi xếp lịch. Giờ kết thúc tự tính; kiểm tra trùng cả ứng viên lẫn người phỏng vấn.
 5. **Dashboard:** Bảng theo ngày, khung giờ, số phút, ứng viên, vị trí và người phỏng vấn, theo UTC+7. Đổi lịch cần lý do; hủy lịch đưa yêu cầu về chờ HR; hoàn thành chỉ sau giờ bắt đầu. Nhật ký giữ người và nội dung thay đổi. Tự cập nhật mỗi 30 giây hoặc khi trở lại tab; có nút cập nhật thủ công.
 

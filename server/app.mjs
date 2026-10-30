@@ -254,20 +254,28 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
     transaction(db, () => { db.prepare("UPDATE documents SET review_status='reviewed' WHERE id=?").run(doc.id); audit(db, doc.candidate_id, req.user.id, 'document.reviewed_manually', { documentId: doc.id, evidence, confirmed }); });
     res.json({ ok: true });
   });
-  app.get('/api/v1/documents/:id/download', staff, (req, res) => {
-    const doc = db.prepare('SELECT * FROM documents WHERE id=? AND candidate_id IS NOT NULL').get(req.params.id);
+  function sendDocument(req, res, next, preview) {
+    const doc = db.prepare('SELECT * FROM documents WHERE id=?').get(req.params.id);
     if (!doc) fail(404, 'Không tìm thấy tài liệu.');
-    if (doc.review_status !== 'reviewed') fail(423, 'Tài liệu đang cách ly, cần được kiểm tra an toàn trước khi tải.');
-    audit(db, doc.candidate_id, req.user.id, 'document.downloaded', { documentId: doc.id });
-    res.set('Content-Type', doc.mime_type); res.attachment(doc.original_name); res.sendFile(resolve(dataDir, 'documents', doc.stored_name));
+    // Use an ASCII fallback plus the UTF-8 name so proxies/browsers handle Vietnamese filenames.
+    const disposition = `${preview ? 'inline' : 'attachment'}; filename="CV.${doc.mime_type === 'application/pdf' ? 'pdf' : 'docx'}"; filename*=UTF-8''${encodeURIComponent(doc.original_name).replace(/['()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`)}`;
+    res.type(doc.mime_type).set('Content-Disposition', disposition);
+    // Resolve only the generated storage name under documents. Absolute paths through .data
+    // are otherwise treated as dotfiles by sendFile and incorrectly return 404.
+    res.sendFile(doc.stored_name, { root: resolve(dataDir, 'documents'), dotfiles: 'deny', cacheControl: false }, error => {
+      if (error) {
+        if (!res.headersSent) { res.removeHeader('Content-Disposition'); res.removeHeader('Content-Type'); }
+        if (error.status === 404 || error.code === 'ENOENT') return next(Object.assign(new Error('Không tìm thấy tệp CV trên máy chủ. Hãy kiểm tra bản sao lưu hoặc tải lại tài liệu.'), { status: 404 }));
+        return next(error);
+      }
+      audit(db, doc.candidate_id, req.user.id, preview ? 'document.viewed' : 'document.downloaded', { documentId: doc.id, version: doc.version, submissionId: doc.submission_id });
+    });
+  }
+  app.get('/api/v1/documents/:id/download', staff, (req, res, next) => {
+    sendDocument(req, res, next, false);
   });
-  app.get('/api/v1/documents/:id/preview', staff, (req, res) => {
-    const doc = db.prepare('SELECT * FROM documents WHERE id=? AND candidate_id IS NOT NULL').get(req.params.id);
-    if (!doc) fail(404, 'Không tìm thấy tài liệu.');
-    if (doc.review_status !== 'reviewed') fail(423, 'CV đang cách ly, cần được HR kiểm tra trước khi xem.');
-    if (doc.mime_type !== 'application/pdf') fail(415, 'Chỉ PDF hỗ trợ xem trực tiếp. Vui lòng tải DOCX để đọc.');
-    audit(db, doc.candidate_id, req.user.id, 'document.viewed', { documentId: doc.id, version: doc.version });
-    res.type('application/pdf').set('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(doc.original_name)}`).sendFile(resolve(dataDir, 'documents', doc.stored_name));
+  app.get('/api/v1/documents/:id/preview', staff, (req, res, next) => {
+    sendDocument(req, res, next, true);
   });
   app.post('/api/v1/candidates/:id/applications', staff, editor, (req, res) => {
     const candidate = getCandidate(req.params.id);
@@ -309,7 +317,7 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
   app.get('/api/v1/submissions', staff, (req, res) => {
     res.json(db.prepare("SELECT * FROM submissions WHERE status='pending' ORDER BY created_at DESC").all().map(s => {
       const payload = JSON.parse(s.payload);
-      return { ...s, payload, matches: duplicateMatches(db, payload), documents: db.prepare('SELECT original_name,size FROM documents WHERE submission_id=?').all(s.id) };
+      return { ...s, payload, matches: duplicateMatches(db, payload), documents: db.prepare('SELECT id,original_name,size,mime_type,version,review_status,created_at,kind FROM documents WHERE submission_id=?').all(s.id) };
     }));
   });
   app.post('/api/v1/submissions/:id/resolve', staff, editor, (req, res) => {

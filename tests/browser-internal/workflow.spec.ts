@@ -57,7 +57,7 @@ test('Boss selects a CV; a separate HR session receives it, picks duration and s
   await page.goto(`/?page=candidates&candidate=${candidateId}`);
   await page.getByRole('button',{name:'CV & tài liệu (1)',exact:true}).click();
   await page.getByRole('button',{name:'Xem CV',exact:true}).click();
-  await expect(page.getByRole('dialog').locator('iframe')).toHaveAttribute('src',/\/api\/v1\/documents\/.*\/preview/);
+  await expect(page.getByRole('dialog').locator('iframe')).toHaveAttribute('src',/^blob:/);
   await page.getByRole('button',{name:'Đóng',exact:true}).click();
   await page.locator('.detail-tabs').getByRole('button',{name:'Tổng quan',exact:true}).click();
   await page.getByRole('button',{name:'Hẹn phỏng vấn',exact:true}).click();

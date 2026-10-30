@@ -18,7 +18,7 @@ export type Candidate = {
 export type Interview = { id: string; candidate_id: string; candidate_name: string; application_id: string; job_title: string; interviewer_id: string; interviewer_name: string; starts_at: string; ends_at: string; duration_minutes?: number; mode: string; location: string; status: string; request_id?: string | null; contact_evidence?: string; contacted_at?: string | null; contacted_by?: string | null };
 export type InterviewRequest = { id: string; application_id: string; candidate_id: string; candidate_name: string; email: string; phone: string; owner_name: string | null; job_title: string; document_id: string; document_name: string; document_version: number; document_review_status?: string; requested_by: string; requested_by_name: string; preferred_interviewer_id?: string | null; preferred_interviewer_name?: string | null; notes: string; status: 'pending' | 'scheduled' | 'cancelled'; created_at: string; interview_id: string | null };
 export type Match = { id: string; full_name: string; email: string; phone: string; source: string };
-export type Submission = { id: string; created_at: string; payload: { fullName: string; email: string; phone: string; jobId: string; source: string }; matches: Match[]; documents: { original_name: string; size: number }[] };
+export type Submission = { id: string; created_at: string; payload: { fullName: string; email: string; phone: string; jobId: string; source: string }; matches: Match[]; documents: Document[] };
 export type Detail = Candidate & {
   history: { id: string; action: string; actor_name: string; created_at: string; details: Record<string, unknown> }[];
   links: { token_hash: string; created_at: string; expires_at: string; used_at: string | null; revoked_at: string | null }[];
