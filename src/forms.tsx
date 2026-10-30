@@ -3,6 +3,7 @@ import { ArrowRight, Check, Copy, FilePlus2, GitMerge, Info, Link2, LoaderCircle
 import { api, ApiError, date, dayKey, duration, errorMessage, json, key, SOURCES, time } from './api';
 import { Alert, Avatar, Field, FileInput, Modal } from './ui';
 import type { Candidate, Interview, InterviewRequest, Job, Match, Submission, User } from './types';
+import { JOB_BRANDS, EMPLOYMENT_TYPES, jobExpired } from './jobs';
 
 function DuplicateChoice({ matches, target, setTarget, resolution, setResolution, reason, setReason }: {
   matches: Match[]; target: string; setTarget: (v: string) => void; resolution: string; setResolution: (v: string) => void; reason: string; setReason: (v: string) => void;
@@ -43,7 +44,7 @@ export function CandidateForm({ jobs, users, user, uploadFirst, onClose, onSaved
           <Field label="Số điện thoại"><input name="phone" type="tel" placeholder="09xx xxx xxx" maxLength={30}/></Field>
           <Field label="Email"><input name="email" type="email" placeholder="ungvien@email.com" maxLength={254}/></Field>
           <Field label="Khu vực sinh sống"><input name="location" placeholder="TP. Hồ Chí Minh" maxLength={200}/></Field>
-          <Field label="Vị trí ứng tuyển"><select name="jobId"><option value="">Chọn sau</option>{jobs.filter(j => j.status === 'open').map(j => <option key={j.id} value={j.id}>{j.title}</option>)}</select></Field>
+          <Field label="Vị trí ứng tuyển"><select name="jobId"><option value="">Chọn sau</option>{jobs.filter(j => j.status === 'open' && !jobExpired(j)).map(j => <option key={j.id} value={j.id}>{j.title}</option>)}</select></Field>
           <Field label="Nguồn hồ sơ" required><select name="source" defaultValue={uploadFirst ? 'Email' : 'Facebook'}>{SOURCES.filter(s => s !== 'Website').map(s => <option key={s}>{s}</option>)}</select></Field>
           <Field label="Ngày nhận hồ sơ" hint="Ngày công ty thực tế nhận CV" required><input type="date" name="receivedAt" defaultValue={new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }).format(new Date())} required/></Field>
           <Field label="Người phụ trách"><select name="ownerId" defaultValue={user.id}>{users.filter(u => ['hr','admin'].includes(u.role)).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}<option value="">Chưa phân công</option></select></Field>
@@ -89,10 +90,32 @@ export function UpdateLinkForm({ candidate, onClose, onCreated }: { candidate: C
   </Modal>;
 }
 
-export function JobForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
-  const [error, setError] = useState(''), [busy, setBusy] = useState(false);
-  async function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); const data = Object.fromEntries(new FormData(event.currentTarget)); setBusy(true); try { await api('/jobs', { method: 'POST', body: json(data) }); onSaved(); } catch (err) { setError(errorMessage(err)); } finally { setBusy(false); } }
-  return <Modal title="Mở vị trí tuyển dụng" subtitle="Vị trí được hiển thị ngay trên cổng ứng tuyển." onClose={onClose}><form onSubmit={submit}><div className="modal-body form-grid"><Field label="Tên vị trí" className="full" required><input name="title" required minLength={2} maxLength={120} placeholder="Content Marketing"/></Field><Field label="Bộ phận" required><input name="department" required maxLength={120} placeholder="Marketing"/></Field><Field label="Số lượng cần tuyển" required><input name="openings" type="number" min={1} max={1000} defaultValue={1} required/></Field><Field label="Địa điểm" className="full" required><input name="location" required defaultValue="TP. Hồ Chí Minh" maxLength={200}/></Field><Field label="Mô tả & yêu cầu công việc" className="full" required><textarea name="description" required minLength={20} maxLength={10000} rows={6} placeholder="Công việc, yêu cầu, quyền lợi và cách làm việc của đội ngũ…"/></Field>{error && <div className="full"><Alert>{error}</Alert></div>}</div><footer className="modal-foot"><span>Hiển thị công khai trên cổng tuyển dụng</span><button className="button primary" disabled={busy}><Plus size={17}/>{busy ? 'Đang lưu…' : 'Đăng tuyển'}</button></footer></form></Modal>;
+export function JobForm({ existing, onClose, onSaved }: { existing?: Job; onClose: () => void; onSaved: () => void }) {
+  const [error, setError] = useState(''), [busy, setBusy] = useState(false), [status, setStatus] = useState(existing?.status || 'open');
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); if (busy) return;
+    const data = Object.fromEntries(new FormData(event.currentTarget)); setBusy(true); setError('');
+    try { await api(existing ? `/jobs/${existing.id}` : '/jobs', { method: existing ? 'PATCH' : 'POST', body: json({ ...data, ...(existing?.revision ? { expectedRevision: existing.revision } : {}) }) }); onSaved(); }
+    catch (error) { setError(errorMessage(error)); } finally { setBusy(false); }
+  }
+  return <Modal title={existing ? 'Chỉnh sửa JD' : 'Tạo JD tuyển dụng'} subtitle="Admin và HR quản lý nội dung. Ứng viên xem JD trên trang tuyển dụng công khai." onClose={() => !busy && onClose()} wide>
+    <form onSubmit={submit}><div className="modal-body"><div className="form-grid">
+      <Field label="Tên vị trí" className="full" required><input name="title" required minLength={2} maxLength={120} defaultValue={existing?.title} placeholder="Ví dụ: Nhân viên Content Marketing"/></Field>
+      <Field label="Bộ phận" required><input name="department" required maxLength={120} defaultValue={existing?.department} placeholder="Marketing"/></Field>
+      <Field label="Ngành hàng"><select name="businessLine" defaultValue={existing?.business_line || ''}><option value="">Chung · Super Net</option>{JOB_BRANDS.map(brand => <option value={brand.id} key={brand.id}>{brand.name} · {brand.category}</option>)}</select></Field>
+      <Field label="Số lượng cần tuyển" required><input name="openings" type="number" min={1} max={1000} defaultValue={existing?.openings || 1} required/></Field>
+      <Field label="Hình thức làm việc"><select name="employmentType" defaultValue={existing?.employment_type || 'Toàn thời gian'}>{EMPLOYMENT_TYPES.map(type => <option key={type}>{type}</option>)}</select></Field>
+      <Field label="Địa điểm làm việc" className="full" required><input name="location" required maxLength={200} defaultValue={existing?.location || ''} placeholder="Địa chỉ văn phòng / khu vực làm việc"/></Field>
+      <Field label="Mức lương"><input name="salaryRange" maxLength={200} defaultValue={existing?.salary_range || ''} placeholder="Ví dụ: 10–15 triệu / tháng hoặc Thỏa thuận"/></Field>
+      <Field label="Thời gian làm việc"><input name="workingHours" maxLength={1000} defaultValue={existing?.working_hours || ''} placeholder="Ví dụ: Thứ Hai đến thứ Sáu, 8:30–17:30"/></Field>
+    </div><h3 className="form-section-title"><FilePlus2 size={17}/>Nội dung JD</h3>
+    <Field label="Mô tả công việc" required hint="Viết mỗi ý một dòng; nội dung xuống dòng được giữ trên trang JD."><textarea name="description" required minLength={20} maxLength={10000} rows={6} defaultValue={existing?.description} placeholder="Các nhiệm vụ và trách nhiệm chính của vị trí…"/></Field>
+    <Field label="Yêu cầu ứng viên"><textarea name="requirements" maxLength={10000} rows={5} defaultValue={existing?.requirements || ''} placeholder="Kinh nghiệm, kỹ năng, kiến thức cần có…"/></Field>
+    <Field label="Quyền lợi"><textarea name="benefits" maxLength={10000} rows={5} defaultValue={existing?.benefits || ''} placeholder="Thu nhập, phúc lợi, cơ hội phát triển…"/></Field>
+    <div className="form-grid"><Field label="Hạn nhận hồ sơ" hint="Để trống nếu chưa chốt; tin quá hạn sẽ tự ẩn và ngừng nhận hồ sơ."><input name="applicationDeadline" type="date" defaultValue={existing?.application_deadline || ''}/></Field><Field label="Trạng thái hiển thị"><select name="status" value={status} onChange={event => setStatus(event.target.value)}><option value="open">Đang tuyển · Hiển thị công khai</option><option value="closed">Tạm dừng · Chưa hiển thị</option></select></Field></div>
+    <div className="info-note"><ShieldCheck size={18}/><span>{status === 'open' ? 'Sau khi lưu, JD còn hạn được hiển thị ngay trên trang tuyển dụng để ứng viên đọc và ứng tuyển.' : 'Tin đang ẩn với ứng viên. Admin và HR vẫn có thể chỉnh sửa và mở lại.'}</span></div>{error && <Alert>{error}</Alert>}
+    </div><footer className="modal-foot"><span>Nội dung được lưu trong database và ghi lịch sử chỉnh sửa</span><div><button type="button" className="button secondary" disabled={busy} onClick={onClose}>Hủy</button><button className="button primary" disabled={busy}><Check size={17}/>{busy ? 'Đang lưu…' : status === 'open' ? 'Lưu & đăng JD' : 'Lưu JD'}</button></div></footer></form>
+  </Modal>;
 }
 
 export function InterviewForm({ candidates, users, initialId, request, existing, onClose, onSaved }: { candidates: Candidate[]; users: User[]; initialId?: string; request?: InterviewRequest; existing?: Interview; onClose: () => void; onSaved: () => void }) {

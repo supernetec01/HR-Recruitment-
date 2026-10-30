@@ -11,6 +11,7 @@ import { publicUser, normalizeUsername } from './accounts.mjs';
 import { registerInternalRoutes } from './internal.mjs';
 import { protectOrigins } from './origin.mjs';
 import { hasAdministrator } from './accounts.mjs';
+import { registerJobRoutes, openJobCondition, todayInVietnam } from './jobs.mjs';
 
 const text = (max = 200) => z.string().trim().max(max).default('');
 const emailValue = z.string().trim().max(254).pipe(z.union([z.literal(''), z.email()]));
@@ -47,7 +48,7 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
     defaultSrc: ["'self'"], scriptSrc: ["'self'"], styleSrc: ["'self'", "'unsafe-inline'"],
     imgSrc: ["'self'", 'data:', 'blob:'], fontSrc: ["'self'"], connectSrc: ["'self'"], frameSrc: ["'self'", 'blob:'], objectSrc: ["'none'"], upgradeInsecureRequests: null,
   } }, crossOriginEmbedderPolicy: false, strictTransportSecurity: production ? undefined : false }));
-  app.use(express.json({ limit: '64kb' }));
+  app.use(express.json({ limit: '128kb' }));
   app.use('/api', (req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
   protectOrigins(app, { appOrigin, trustProxy, production });
   const limiter = rateLimit({ windowMs: 15 * 60000, limit: demo ? 300 : 30, standardHeaders: 'draft-8', legacyHeaders: false, message: { message: 'Bạn thao tác quá nhanh. Vui lòng thử lại sau.' } });
@@ -106,7 +107,7 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
     } catch (error) { unlinkSync(resolve(dataDir, 'documents', stored)); throw error; }
     if (candidateId) audit(db, candidateId, actorId, 'document.uploaded', { documentId: docId, name: file.originalname, version, reviewStatus: 'quarantined' });
   }
-  function assertJob(jobId) { if (jobId && !db.prepare("SELECT id FROM jobs WHERE id=? AND status='open'").get(jobId)) fail(400, 'Vị trí không tồn tại hoặc đã ngừng tuyển.'); }
+  function assertJob(jobId) { if (jobId && !db.prepare(`SELECT id FROM jobs WHERE id=? AND ${openJobCondition}`).get(jobId, todayInVietnam())) fail(400, 'Vị trí không tồn tại, đã ngừng tuyển hoặc đã hết hạn nhận hồ sơ.'); }
   function assertOwner(ownerId) { if (ownerId && !db.prepare("SELECT id FROM users WHERE id=? AND role IN ('hr','admin') AND id!='public' AND active=1 AND is_demo=?").get(ownerId, demo ? 1 : 0)) fail(400, 'Người phụ trách không hợp lệ hoặc đã bị khóa.'); }
   function addApplication(cid, data, actorId) {
     if (!data.jobId) return;
@@ -176,18 +177,7 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
     res.clearCookie('sn_session', { path: '/' }); res.json({ ok: true });
   });
   registerInternalRoutes(app, { db, staff, editor, demo, getCandidate, idempotent });
-  app.get('/api/v1/jobs', staff, (req, res) => res.json(db.prepare(`SELECT j.*, (SELECT COUNT(*) FROM applications a WHERE a.job_id=j.id) AS application_count FROM jobs j ORDER BY created_at DESC`).all()));
-  app.post('/api/v1/jobs', staff, editor, (req, res) => {
-    const data = z.object({ title: z.string().trim().min(2).max(120), department: z.string().trim().min(1).max(120), location: z.string().trim().min(1).max(200), description: z.string().trim().min(20).max(10000), openings: z.coerce.number().int().min(1).max(1000) }).parse(req.body);
-    const jid = id();
-    db.prepare('INSERT INTO jobs(id,title,department,location,description,openings,created_at) VALUES(?,?,?,?,?,?,?)').run(jid, data.title, data.department, data.location, data.description, data.openings, now());
-    audit(db, null, req.user.id, 'job.created', { jobId: jid, title: data.title }); res.status(201).json({ id: jid });
-  });
-  app.patch('/api/v1/jobs/:id', staff, editor, (req, res) => {
-    const { status } = z.object({ status: z.enum(['open','closed']) }).parse(req.body);
-    if (!db.prepare('UPDATE jobs SET status=? WHERE id=?').run(status, req.params.id).changes) fail(404, 'Không tìm thấy vị trí.');
-    audit(db, null, req.user.id, 'job.status_changed', { jobId: req.params.id, status }); res.json({ ok: true });
-  });
+  registerJobRoutes(app, { db, staff, editor });
   app.get('/api/v1/candidates', staff, (req, res) => {
     const candidates = db.prepare('SELECT id FROM candidates ORDER BY received_at DESC,created_at DESC').all().map(c => getCandidate(c.id));
     res.json(candidates);
@@ -345,7 +335,6 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
       return { candidate: getCandidate(cid) };
     });
   });
-  app.get('/api/v1/public/jobs', (req, res) => res.json(db.prepare("SELECT id,title,department,location,employment_type,description,openings FROM jobs WHERE status='open' ORDER BY created_at").all()));
   app.post('/api/v1/public/applications', stagedFiles, (req, res) => {
     const parsed = publicSchema.parse(req.body);
     if (!req.file) fail(400, 'Vui lòng đính kèm CV (PDF hoặc DOCX).'); validateFile(req.file); assertJob(parsed.jobId);

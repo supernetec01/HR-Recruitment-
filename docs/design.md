@@ -30,6 +30,14 @@ erDiagram
 
 Mã nguồn schema: `server/db.mjs`. Database có khóa ngoại, index liên hệ, index duy nhất cho lượt đang xử lý và các cập nhật nghiệp vụ trong giao dịch `BEGIN IMMEDIATE`.
 
+## JD và cổng tuyển dụng
+
+`jobs` bổ sung `requirements`, `benefits`, `working_hours`, `salary_range`, `business_line`, `application_deadline`, `updated_at`, `revision` bằng migration thêm cột, không thay ID hay xóa nội dung cũ. `business_line` nhận `safestraps`, `jielien`, `baby-tatto` hoặc chuỗi rỗng cho tuyển dụng chung. Trang công khai giới thiệu ba ngành hàng; mỗi vị trí có trang JD riêng `/tuyen-dung/:id`, tách khỏi biểu mẫu `/ung-tuyen/:id`.
+
+`server/jobs.mjs` quản lý API JD. GET nội bộ cần phiên đăng nhập; POST/PATCH cần Admin/HR. PATCH kiểm tra dữ liệu sau khi hợp nhất với bản hiện tại để không xóa các trường bị bỏ qua, không đổi ID liên kết application. Giao diện gửi `expectedRevision`; bản cũ bị trả 409. Các cập nhật và audit người sửa/nội dung trước-sau nằm cùng giao dịch.
+
+GET công khai chỉ trả danh sách trường JD cho phép, không trả user, CV, lượt ứng tuyển hay thông tin ứng viên. Tin phải có `status=open` và không có hạn hoặc hạn từ ngày hiện tại tại UTC+7 trở đi. Danh sách, trang JD trực tiếp và API tiếp nhận ứng tuyển dùng chung điều kiện; tin đã đóng/hết hạn không nhận lượt mới, vẫn giữ application/lịch đã có. Nội dung JD là văn bản do React escape, giữ xuống dòng, không render HTML người dùng nhập.
+
 ## Quy tắc nghiệp vụ đã thực thi
 
 - **Thiếu thông tin:** HR có thể lưu nếu có ít nhất tên, thông tin liên hệ hoặc CV. Tình trạng đầy đủ được suy ra từ tên, liên hệ, ít nhất một lượt ứng tuyển, CV và sự đồng ý; không lưu hai trạng thái có thể lệch nhau.
@@ -56,7 +64,7 @@ Mã nguồn schema: `server/db.mjs`. Database có khóa ngoại, index liên h�
 | Ứng tuyển | `POST /api/v1/candidates/:id/applications`, `PATCH /api/v1/applications/:id` |
 | Xác minh trùng | `GET /api/v1/submissions`, `POST /api/v1/submissions/:id/resolve` |
 | Link bổ sung | `POST /api/v1/candidates/:id/update-links`, `DELETE /api/v1/candidates/:id/update-links/:hash` |
-| Công khai | `GET /api/v1/public/jobs`, `POST /api/v1/public/applications` |
+| Công khai | `GET /api/v1/public/jobs`, `GET /api/v1/public/jobs/:id`, `POST /api/v1/public/applications` |
 | Bổ sung công khai | `GET/POST /api/v1/public/update-links/:token` |
 | Vị trí | `GET/POST /api/v1/jobs`, `PATCH /api/v1/jobs/:id` |
 | Lịch | `GET/POST /api/v1/interviews`, `PATCH /api/v1/interviews/:id` |

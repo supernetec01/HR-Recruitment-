@@ -1,6 +1,6 @@
 # Super Net Recruitment Hub
 
-Website tuyển dụng nội bộ: **Admin cấp tài khoản → HR tiếp nhận CV → Sếp chọn Hẹn phỏng vấn → HR liên hệ, chọn ngày/giờ/thời lượng → lịch hiển thị trên dashboard**.
+Website tuyển dụng Super Net: **Admin/HR đăng JD → ứng viên xem tuyển dụng và gửi CV → HR tiếp nhận hồ sơ → Sếp chọn Hẹn phỏng vấn → HR xếp lịch → dashboard hiển thị ngày/giờ/thời lượng**.
 
 Bảng màu Super Net: navy `#034969`, xanh dương `#149cd0`, xanh lá `#93c947`. Một hồ sơ ứng viên gốc, nhiều lượt ứng tuyển và nhiều phiên bản CV.
 
@@ -19,7 +19,7 @@ npm run dev
 
 `dev` chạy API cổng 3000 và Vite cổng 5173. Nhập `http://localhost:5173` trong trình duyệt **máy đang chạy dự án** và đăng nhập. Đây là địa chỉ chạy tại máy bạn, không phải website đã triển khai. Không cần `.env`; `.env.example` chỉ là tài liệu và không tự nạp.
 
-Xem [hướng dẫn VS Code và sử dụng](docs/vscode.md), [thiết kế dữ liệu](docs/design.md). Ảnh giao diện dùng dữ liệu kiểm thử: [Dashboard](docs/screenshots/hr-desktop.png), [Điện thoại](docs/screenshots/hr-mobile.png).
+Xem [hướng dẫn VS Code và sử dụng](docs/vscode.md), [thiết kế dữ liệu](docs/design.md). Ảnh giao diện dùng dữ liệu kiểm thử: [Trang tuyển dụng](docs/screenshots/careers.png), [JD công khai](docs/screenshots/job-description.png), [Dashboard](docs/screenshots/hr-desktop.png), [Điện thoại](docs/screenshots/hr-mobile.png).
 
 ## Phân quyền
 
@@ -30,20 +30,32 @@ Xem [hướng dẫn VS Code và sử dụng](docs/vscode.md), [thiết kế dữ
 | Tiếp nhận/sửa hồ sơ, upload CV, xác minh trùng | Có | — | Có |
 | Chọn CV và yêu cầu Hẹn phỏng vấn | Có | Có | — |
 | Nhận yêu cầu, liên hệ, tạo/đổi/hủy lịch | Có | — | Có |
-| Quản lý vị trí tuyển dụng | Có | — | Có |
+| Tạo/sửa JD, mở/tạm dừng tuyển dụng | Có | — | Có |
 | Đổi mật khẩu cá nhân | Có | Có | Có |
 
 Backend kiểm tra quyền trên từng API. Khóa tài khoản, đổi quyền hoặc đặt lại mật khẩu thu hồi các phiên đăng nhập. Không thể tự khóa/hạ quyền Admin đang dùng hoặc làm mất quản trị viên cuối cùng.
 
 ## Quy trình sử dụng
 
-1. **Admin:** Thành viên & phân quyền → Tạo tài khoản. Điền họ tên, tên đăng nhập, vai trò, mật khẩu từ 12 ký tự; email không bắt buộc. Tạo tài khoản Sếp và HR. Mở vị trí tuyển dụng trong trang Vị trí tuyển dụng.
+1. **Admin:** Thành viên & phân quyền → Tạo tài khoản. Điền họ tên, tên đăng nhập, vai trò, mật khẩu từ 12 ký tự; email không bắt buộc. Tạo tài khoản Sếp và HR. Admin/HR vào Vị trí tuyển dụng → Tạo JD tuyển dụng để đăng tin.
 2. **HR:** Thêm ứng viên / Upload CV từ Facebook, email, Zalo… Có thể lưu thiếu thông tin; giữ nguồn và ngày nhận thực tế. PDF/DOCX tối đa 10 MB, được cách ly. HR kiểm tra an toàn qua quy trình bên ngoài rồi ghi căn cứ tại CV & tài liệu → Ghi nhận kiểm tra. Chưa có quét virus tự động.
 3. **Sếp:** Mở hồ sơ → CV & tài liệu → Xem CV (PDF; DOCX tải xuống). Tại Tổng quan của hồ sơ, chọn Hẹn phỏng vấn, đúng vị trí và phiên bản CV, ghi chú gửi HR. Đây là yêu cầu xếp lịch, chưa phải giờ hẹn hoặc quyết định tuyển dụng.
 4. **HR:** Nhận yêu cầu trên dashboard/Yêu cầu phỏng vấn. Liên hệ ứng viên rồi chọn Liên hệ & xếp lịch: ngày, giờ bắt đầu, thời lượng 15–240 phút, người phỏng vấn và địa điểm. Giờ kết thúc tự tính; kiểm tra trùng cả ứng viên lẫn người phỏng vấn.
 5. **Dashboard:** Bảng theo ngày, khung giờ, số phút, ứng viên, vị trí và người phỏng vấn, theo UTC+7. Đổi lịch cần lý do; hủy lịch đưa yêu cầu về chờ HR; hoàn thành chỉ sau giờ bắt đầu. Nhật ký giữ người và nội dung thay đổi. Tự cập nhật mỗi 30 giây hoặc khi trở lại tab; có nút cập nhật thủ công.
 
 Cổng `/tuyen-dung` cho ứng viên tự gửi; nghi trùng được đưa vào Chờ xác minh để HR quyết định, không tự ghi đè danh tính/CV. HR có thể tạo link bổ sung có hạn, dùng một lần để thêm đúng hồ sơ. Những luồng tiếp nhận trước đây được giữ nguyên.
+
+## Đăng JD và trang tuyển dụng công khai
+
+Trang `/tuyen-dung` giới thiệu ba ngành hàng: **phụ kiện xe Safestraps**, **thiết bị âm thanh JieLien**, **Mẹ và Bé Baby tatto**; phía dưới là vị trí đang tuyển, tìm kiếm và lọc ngành hàng.
+
+Admin/HR vào **Vị trí tuyển dụng → Tạo JD tuyển dụng**, nhập tên vị trí, bộ phận, ngành hàng, số lượng, hình thức, địa điểm, mức lương, thời gian làm việc, mô tả công việc, yêu cầu, quyền lợi và hạn nhận hồ sơ. Chọn **Đang tuyển → Lưu & đăng JD** để công khai; chọn **Tạm dừng → Lưu JD** để lưu khi chưa muốn hiển thị. Nội dung xuống dòng được giữ nguyên trên trang JD.
+
+Mỗi vị trí có **Chỉnh sửa JD**, **Xem JD**, chia sẻ liên kết và tạm dừng/mở lại. Ứng viên xem JD ở `/tuyen-dung/:id` rồi chọn **Ứng tuyển ngay**, không cần tài khoản. Sếp được xem nhưng không được tạo/sửa/tạm dừng JD; quyền được kiểm tra cả ở API.
+
+Chỉ tin đang tuyển và còn hạn được công khai; ngày hết hạn tính đến hết ngày theo UTC+7. Tin quá hạn/tạm dừng bị ẩn cả ở danh sách và đường dẫn trực tiếp, ngừng nhận lượt ứng tuyển mới. Hồ sơ/lịch phỏng vấn đã có vẫn được giữ. Để tuyển lại tin hết hạn, chỉnh hạn nhận hồ sơ hoặc để trống rồi mở lại. Chỉnh sửa có kiểm tra phiên bản để tránh ghi đè cập nhật của người khác, đồng thời lưu người sửa, thời điểm và nội dung thay đổi.
+
+Database cũ tự bổ sung các trường JD khi khởi động; giữ ID vị trí, mô tả cũ và các lượt ứng tuyển. Không cần tạo lại vị trí hay chạy setup lại. Link dùng IP `192.168.1.5` chỉ truy cập được trong mạng tương ứng; để ứng viên ngoài công ty truy cập, cần triển khai qua domain/địa chỉ công khai phù hợp.
 
 ## Dữ liệu và vận hành
 
@@ -75,7 +87,7 @@ npm test
 npm run test:e2e
 ```
 
-TypeScript kiểm tra frontend, cấu hình và test trình duyệt. Test API dùng SQLite/cổng tạm thật. Playwright build rồi chạy hai máy chủ riêng: demo ở 3100, nội bộ ở 3110; mật khẩu test sinh ngẫu nhiên và dữ liệu tách khỏi môi trường vận hành. Dùng `/usr/bin/chromium` nếu có, máy khác chạy `npx playwright install chromium`; `CHROMIUM_PATH` cho phép ghi đè.
+TypeScript kiểm tra frontend, cấu hình và test trình duyệt. Test API dùng SQLite/cổng tạm thật, gồm phân quyền JD, cập nhật từng phần, hạn nhận hồ sơ và nâng cấp database cũ. Playwright kiểm tra đăng JD → xem công khai → nộp CV, chỉnh sửa/tạm dừng, phân quyền, điện thoại và các luồng tiếp nhận/lịch. Demo ở 3100, nội bộ ở 3110, proxy Vite kiểm thử ở 3120; mật khẩu test sinh ngẫu nhiên và dữ liệu tách khỏi môi trường vận hành. Dùng `/usr/bin/chromium` nếu có, máy khác chạy `npx playwright install chromium`; `CHROMIUM_PATH` cho phép ghi đè.
 
 ## Phạm vi còn lại
 

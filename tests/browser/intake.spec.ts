@@ -31,6 +31,7 @@ test('HR creates an incomplete record, detects duplicate, links CV, and preserve
 test('applicant applies publicly; duplicate enters review and HR links it without overwriting the CV', async ({ page }) => {
   await page.goto('/tuyen-dung');
   await page.locator('.career-job').filter({hasText:'Content Marketing'}).click();
+  await page.locator('.public-jd-heading').getByRole('link',{name:'Ứng tuyển ngay',exact:true}).click();
   await page.getByLabel(/^Họ và tên/).fill('Minh Anh nộp lại');
   await page.getByLabel('Email',{exact:true}).fill('minhanh.nguyen@example.com');
   await page.getByLabel('Tải CV (PDF hoặc DOCX)').setInputFiles(pdf);
@@ -105,7 +106,7 @@ test('mobile navigation and intake form fit the viewport with no JavaScript erro
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
   await page.getByRole('button',{name:'Mở menu',exact:true}).click();
   await page.locator('.main-nav').getByRole('button',{name:'Vị trí tuyển dụng',exact:true}).click();
-  await expect(page.getByRole('heading',{name:'Vị trí tuyển dụng',exact:true})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Vị trí tuyển dụng & JD',exact:true})).toBeVisible();
   await page.getByRole('button',{name:'Mở menu',exact:true}).click();
   await page.locator('.main-nav').getByRole('button',{name:/Quản lý ứng viên/}).click();
   await page.getByRole('button',{name:'Thêm ứng viên',exact:true}).click();
@@ -115,7 +116,7 @@ test('mobile navigation and intake form fit the viewport with no JavaScript erro
   await expect(page.getByRole('heading',{name:'Mobile draft',exact:true})).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
   await page.goto('/tuyen-dung');
-  await expect(page.getByRole('heading',{name:/Cơ hội đang chờ bạn/})).toBeVisible();
+  await expect(page.getByRole('heading',{name:/Vị trí đang tuyển/})).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
   expect(errors).toEqual([]);
 });

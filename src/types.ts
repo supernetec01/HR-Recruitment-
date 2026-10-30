@@ -1,5 +1,10 @@
 export type User = { id: string; name: string; username?: string; email?: string; role: 'hr' | 'boss' | 'admin'; active?: boolean; is_demo?: number };
-export type Job = { id: string; title: string; department: string; location: string; employment_type: string; description: string; openings: number; status?: string; application_count?: number };
+export type Job = {
+  id: string; title: string; department: string; location: string; employment_type: string; description: string;
+  openings: number; status?: string; application_count?: number; requirements?: string; benefits?: string;
+  working_hours?: string; salary_range?: string; business_line?: string; application_deadline?: string;
+  created_at?: string; updated_at?: string; revision?: number;
+};
 export type Application = { id: string; job_id: string; job_title: string; department: string; stage: string; source: string; received_at: string; created_at: string };
 export type Document = { id: string; original_name: string; size: number; version: number; mime_type: string; review_status: string; created_at: string; kind: string };
 export type Candidate = {

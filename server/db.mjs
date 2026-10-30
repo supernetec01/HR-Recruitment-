@@ -87,6 +87,12 @@ export function openDatabase(directory, demo = false) {
     );
   `);
   // Additive migrations preserve existing applicants, documents and staff accounts.
+  const jobColumns = new Set(db.prepare('PRAGMA table_info(jobs)').all().map(c => c.name));
+  for (const column of ['requirements','benefits','working_hours','salary_range','business_line','application_deadline','updated_at']) {
+    if (!jobColumns.has(column)) db.exec(`ALTER TABLE jobs ADD COLUMN ${column} TEXT NOT NULL DEFAULT ''`);
+  }
+  if (!jobColumns.has('revision')) db.exec('ALTER TABLE jobs ADD COLUMN revision INTEGER NOT NULL DEFAULT 1');
+  db.exec("UPDATE jobs SET updated_at=created_at WHERE updated_at=''");
   const userColumns = new Set(db.prepare('PRAGMA table_info(users)').all().map(c => c.name));
   if (!userColumns.has('username')) db.exec('ALTER TABLE users ADD COLUMN username TEXT');
   if (!userColumns.has('active')) db.exec('ALTER TABLE users ADD COLUMN active INTEGER NOT NULL DEFAULT 1');
@@ -166,7 +172,7 @@ function seedDemo(db, directory) {
       ['job-koc', 'Booking KOL / KOC', 'Partnership', 2, 'Tìm kiếm, kết nối và chăm sóc mạng lưới nhà sáng tạo. Quản lý chiến dịch hợp tác và theo dõi hiệu quả. Ưu tiên kỹ năng giao tiếp, đàm phán.'],
       ['job-design', 'Graphic Designer', 'Creative', 1, 'Thiết kế ấn phẩm thương hiệu, hình ảnh sản phẩm và nội dung số. Thành thạo công cụ thiết kế, có tư duy thẩm mỹ và portfolio.'],
     ];
-    jobs.forEach(([jid, title, dept, openings, description]) => db.prepare('INSERT INTO jobs(id,title,department,location,description,openings,created_at) VALUES(?,?,?,?,?,?,?)').run(jid, title, dept, 'TP. Hồ Chí Minh', description, openings, now()));
+    jobs.forEach(([jid, title, dept, openings, description]) => db.prepare('INSERT INTO jobs(id,title,department,location,description,openings,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)').run(jid, title, dept, 'TP. Hồ Chí Minh', description, openings, now(), now()));
     const people = [
       ['Nguyễn Minh Anh','minhanh.nguyen@example.com','0901112201','Website','job-content','new',['Có portfolio'],'demo-hr'],
       ['Trần Hoàng Nam','hoangnam.tran@example.com','0901112202','Facebook','job-video','screening',['Tiềm năng'],'demo-hr'],

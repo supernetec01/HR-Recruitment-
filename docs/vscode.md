@@ -37,9 +37,23 @@ Admin sửa tên/email/quyền, đặt mật khẩu mới, khóa/mở tài kho�
 
 Tạo ít nhất một Sếp và một HR. Để thử hai vai trò, dùng trình duyệt hoặc cửa sổ riêng tư độc lập; các tab thông thường dùng chung cookie. Mỗi nhân sự đổi mật khẩu cá nhân tại trang này.
 
+## Admin/HR tạo và chỉnh sửa JD
+
+1. Đăng nhập bằng tài khoản **Admin hoặc HR**, mở **Vị trí tuyển dụng → Tạo JD tuyển dụng**.
+2. Nhập tên vị trí, bộ phận, số lượng, hình thức và địa điểm. Chọn ngành hàng **Safestraps / JieLien / Baby tatto**, hoặc **Chung · Super Net**. Bổ sung mức lương và thời gian làm việc nếu có.
+3. Điền **Mô tả công việc**, **Yêu cầu ứng viên**, **Quyền lợi**; mỗi ý một dòng. Hạn nhận hồ sơ có thể để trống.
+4. Chọn **Đang tuyển → Lưu & đăng JD** để ứng viên xem, hoặc **Tạm dừng → Lưu JD** khi nội dung chưa sẵn sàng.
+5. Mỗi vị trí có nút **Chỉnh sửa JD**, **Xem JD** và chia sẻ liên kết. Có thể tạm dừng mà không xóa vị trí hay hồ sơ đã nhận. Tin quá hạn tự ẩn theo ngày UTC+7; muốn tuyển lại thì sửa/xóa hạn và mở lại. Nếu người khác sửa trước khi bạn lưu, tải lại vị trí để lấy bản mới.
+
+Sếp chỉ được xem, không được tạo/chỉnh sửa JD. Mọi thay đổi lưu vào database, có nhật ký người sửa và nội dung trước/sau.
+
+Trang công khai nằm tại `/tuyen-dung`: giới thiệu phụ kiện xe **Safestraps**, thiết bị âm thanh **JieLien**, Mẹ và Bé **Baby tatto**, rồi danh sách vị trí đang tuyển. Chọn vị trí → đọc JD → **Ứng tuyển ngay**; ứng viên không cần tài khoản. Mỗi JD có đường dẫn riêng `/tuyen-dung/:id` để gửi cho ứng viên. Tìm kiếm và bộ lọc giúp chọn đúng ngành hàng.
+
+Với máy chủ hiện tại, mở `http://192.168.1.5:5173/tuyen-dung`. Địa chỉ IP này dùng trong mạng nội bộ; ứng viên ngoài công ty cần domain/địa chỉ công khai được triển khai và truy cập được. Nếu trình duyệt HTTP không cho sao chép tự động, chọn nội dung ô liên kết rồi Ctrl+C.
+
 ## HR nhận hồ sơ và Sếp chọn CV
 
-1. Admin/HR tạo vị trí tại **Vị trí tuyển dụng → Tạo vị trí mới**. Không gian mới không có dữ liệu giả.
+1. Admin/HR đăng JD tại **Vị trí tuyển dụng → Tạo JD tuyển dụng**. Không gian mới không có dữ liệu giả.
 2. HR dùng **Quản lý ứng viên → Thêm ứng viên / Upload CV**. Nhập những gì đã có, chọn nguồn, ngày nhận thực tế và vị trí; có thể lưu thiếu thông tin.
 3. CV mới cách ly. HR kiểm tra an toàn bằng quy trình bên ngoài rồi vào **CV & tài liệu → Ghi nhận kiểm tra** để ghi căn cứ. Chưa có quét virus tự động. Sếp sau đó xem PDF trực tiếp hoặc tải DOCX.
 4. Sếp mở hồ sơ, đọc CV trong **CV & tài liệu**. Về tab **Tổng quan** của hồ sơ → **Hẹn phỏng vấn**, chọn vị trí, phiên bản CV và ghi chú gửi HR.
@@ -72,7 +86,7 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Linux có `/usr/bin/chromium` được tự nhận; nơi khác dùng Chromium của Playwright hoặc đặt `CHROMIUM_PATH`. Test dùng tài khoản/dữ liệu riêng, không thay database đang dùng. Hai cổng test là 3100 và 3110.
+Linux có `/usr/bin/chromium` được tự nhận; nơi khác dùng Chromium của Playwright hoặc đặt `CHROMIUM_PATH`. Test dùng tài khoản/dữ liệu riêng, không thay database đang dùng. Các cổng test là 3100, 3110 và 3120 (proxy Vite).
 
 Khi cập nhật, dừng dịch vụ, lưu/commit công việc đang sửa rồi:
 
@@ -82,7 +96,7 @@ npm ci
 npm run dev
 ```
 
-Không cần setup lại. Không xóa `.data/`: dữ liệu nội bộ nằm trong `.data/internal/`, gồm SQLite và documents, không đi theo GitHub. Muốn backup, dừng dịch vụ và sao lưu toàn bộ thư mục này. Chưa có backup tự động. Chạy `npm run demo` nếu chỉ muốn trải nghiệm dữ liệu giả riêng, không chạy cùng lúc với dev.
+Không cần setup lại. Các trường JD mới được thêm tự động khi khởi động, giữ nguyên vị trí, tài khoản và hồ sơ cũ. Không xóa `.data/`: dữ liệu nội bộ nằm trong `.data/internal/`, gồm SQLite và documents, không đi theo GitHub. Muốn backup, dừng dịch vụ và sao lưu toàn bộ thư mục này. Chưa có backup tự động. Chạy `npm run demo` nếu chỉ muốn trải nghiệm dữ liệu giả riêng, không chạy cùng lúc với dev.
 
 ## Chia sẻ cho các máy trong công ty
 
@@ -116,7 +130,10 @@ Các máy khác dùng hostname/IP máy chủ và cổng 3000, không dùng local
 | Bảng màu Super Net | `src/internal.css` |
 | Hồ sơ, xem CV | `src/detail.tsx` |
 | Biểu mẫu, thời lượng | `src/forms.tsx` |
+| Quản trị JD, nội dung công việc | `src/jobs.tsx`, `src/forms.tsx` |
+| Tuyển dụng công khai, trang JD | `src/public.tsx`, `src/job-page.tsx`, `src/careers.css` |
 | API hồ sơ/xác thực | `server/app.mjs` |
+| API JD, quyền sửa, hạn nhận hồ sơ | `server/jobs.mjs` |
 | API tài khoản/yêu cầu/lịch | `server/internal.mjs` |
 | Mật khẩu, khởi tạo Admin | `server/accounts.mjs` |
 | Schema/migrations | `server/db.mjs` |
@@ -131,6 +148,8 @@ Các máy khác dùng hostname/IP máy chủ và cổng 3000, không dùng local
 | Cổng bị chiếm | Dừng phiên dev/demo/debug/test cũ trước khi chạy lại. |
 | Đăng nhập HTTP không giữ phiên | Không bật NODE_ENV=production khi thử HTTP trực tiếp. |
 | Không xem được CV | HR kiểm tra an toàn; PDF xem trực tiếp, DOCX tải xuống. |
+| JD không hiện công khai | Kiểm tra trạng thái Đang tuyển, hạn nhận hồ sơ và bộ lọc ngành hàng. |
+| Không thấy nút tạo/sửa JD | Đăng nhập bằng Admin/HR; Sếp chỉ được xem. |
 | Không đặt được lịch | Kiểm tra liên hệ/consent, thời gian tương lai, cùng ngày, thời lượng và xung đột. |
 
 AI, email, phê duyệt offer, quét virus tự động và các giới hạn còn lại: xem [README](../README.md). Hướng dẫn Windows/macOS chưa được kiểm chứng trên máy Windows/macOS thật.
