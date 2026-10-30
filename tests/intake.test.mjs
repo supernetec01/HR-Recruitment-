@@ -193,6 +193,8 @@ test('interview scheduling blocks overlapping interviewer times and incomplete c
 test('a later reapplication to the same job creates a new application on the same candidate', async () => {
   const before = (await request(`/candidates/${candidateId}`)).body;
   const application = before.applications[0];
+  const scheduled = (await request('/interviews')).body.filter(i => i.application_id === application.id && i.status === 'scheduled');
+  for (const interview of scheduled) assert.equal((await request(`/interviews/${interview.id}`,{method:'PATCH',data:{status:'cancelled'}})).status,200);
   const rejected = await request(`/applications/${application.id}`,{method:'PATCH',data:{stage:'rejected',reason:'Không phù hợp với đợt tuyển trước.'}});
   assert.equal(rejected.status,200);
   const next = await request(`/candidates/${candidateId}/applications`,{method:'POST',data:{jobId:application.job_id,source:'Email'}});

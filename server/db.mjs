@@ -22,7 +22,7 @@ export function verifyPassword(password, stored) {
   const expected = Buffer.from(key, 'hex');
   return expected.length === actual.length && timingSafeEqual(expected, actual);
 }
-export const STAGES = ['new', 'screening', 'contacted', 'scheduled', 'interviewed', 'review', 'offered', 'hired', 'rejected'];
+export const STAGES = ['new', 'screening', 'contacted', 'interview_requested', 'scheduled', 'interviewed', 'review', 'offered', 'hired', 'rejected'];
 export const SOURCES = ['Website', 'Facebook', 'Zalo', 'Email', 'TopCV', 'Giới thiệu', 'Hồ sơ giấy', 'Khác'];
 
 export function openDatabase(directory, demo = false) {
@@ -86,6 +86,23 @@ export function openDatabase(directory, demo = false) {
       created_by TEXT NOT NULL REFERENCES users(id), created_at TEXT NOT NULL
     );
   `);
+  // Additive migrations preserve existing applicants, documents and staff accounts.
+  const userColumns = new Set(db.prepare('PRAGMA table_info(users)').all().map(c => c.name));
+  if (!userColumns.has('username')) db.exec('ALTER TABLE users ADD COLUMN username TEXT');
+  if (!userColumns.has('active')) db.exec('ALTER TABLE users ADD COLUMN active INTEGER NOT NULL DEFAULT 1');
+  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS users_username ON users(username COLLATE NOCASE) WHERE username IS NOT NULL;
+    CREATE TABLE IF NOT EXISTS interview_requests (
+      id TEXT PRIMARY KEY, application_id TEXT NOT NULL REFERENCES applications(id),
+      document_id TEXT NOT NULL REFERENCES documents(id), requested_by TEXT NOT NULL REFERENCES users(id),
+      notes TEXT NOT NULL DEFAULT '', previous_stage TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','scheduled','cancelled')),
+      created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS one_pending_interview_request ON interview_requests(application_id) WHERE status='pending';
+  `);
+  const interviewColumns = new Set(db.prepare('PRAGMA table_info(interviews)').all().map(c => c.name));
+  if (!interviewColumns.has('request_id')) db.exec('ALTER TABLE interviews ADD COLUMN request_id TEXT REFERENCES interview_requests(id)');
+  db.exec("CREATE UNIQUE INDEX IF NOT EXISTS one_booking_per_request ON interviews(request_id) WHERE status='scheduled' AND request_id IS NOT NULL");
   // Preserve early development databases while allowing a new application after a completed/rejected one.
   const applicationSql = db.prepare("SELECT sql FROM sqlite_master WHERE name='applications'").get().sql;
   if (applicationSql.includes('UNIQUE(candidate_id, job_id)')) {

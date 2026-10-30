@@ -1,24 +1,8 @@
-# Sử dụng Super Net Recruitment Hub trên VS Code
+# VS Code và sử dụng nội bộ Super Net
 
-Hướng dẫn chạy trên máy cá nhân Windows, macOS hoặc Linux. Đây là bản phát triển có dữ liệu minh họa, không cần cài PostgreSQL, Redis hay dịch vụ AI.
+## Cài đặt lần đầu
 
-## 1. Chuẩn bị
-
-- Cài [Git](https://git-scm.com/downloads), [Node.js 24 LTS](https://nodejs.org/) hoặc mới hơn, và [VS Code](https://code.visualstudio.com/).
-- Node.js có sẵn npm. Nếu vừa cài Node/Git, hãy đóng rồi mở lại VS Code để Terminal nhận PATH mới.
-- Mở Terminal và kiểm tra:
-
-```bash
-git --version
-node --version
-npm --version
-```
-
-`node --version` phải là `v24.x.x` trở lên vì backend dùng SQLite tích hợp trong Node. Nếu đang dùng Node 18/20/22, cần đổi sang Node 24 trước khi chạy.
-
-## 2. Lấy mã nguồn và mở VS Code
-
-Trong Terminal, chuyển đến thư mục bạn muốn lưu dự án, rồi chạy:
+Cài [Git](https://git-scm.com/downloads), [Node.js 24 LTS hoặc mới hơn](https://nodejs.org/) và [VS Code](https://code.visualstudio.com/). Mở Terminal:
 
 ```bash
 git clone https://github.com/supernetec01/HR-Recruitment-.git
@@ -26,111 +10,72 @@ cd HR-Recruitment-
 code .
 ```
 
-Nếu repository riêng tư, đăng nhập tài khoản GitHub có quyền truy cập qua luồng đăng nhập Git/Git Credential Manager trên máy bạn. Không đặt token vào URL clone hoặc tệp trong dự án.
+Nếu không có lệnh `code`, mở VS Code → File → Open Folder và chọn thư mục chứa `package.json`. Repository riêng tư cần đăng nhập GitHub có quyền truy cập; không nhúng token vào URL. Sau khi cài Node/Git, mở lại VS Code để nhận PATH mới.
 
-Nếu lệnh `code` chưa được nhận diện, mở VS Code → **File → Open Folder…**, chọn thư mục `HR-Recruitment-`. Nếu tải ZIP từ GitHub, cần giải nén trước và mở đúng thư mục chứa `package.json`.
-
-Trong macOS có thể bật lệnh `code`: mở Command Palette và chọn **Shell Command: Install 'code' command in PATH**. Trên Windows, mục **Add to PATH** nằm trong trình cài đặt VS Code.
-
-## 3. Cài dependencies và chạy
-
-Trong VS Code chọn **Terminal → New Terminal**. Đảm bảo Terminal đang ở thư mục chứa `package.json`, rồi chạy:
+Trong VS Code → Terminal → New Terminal:
 
 ```bash
+node --version
 npm ci
+npm run setup
 npm run dev
 ```
 
-Giữ Terminal này chạy khi sử dụng ứng dụng. Không cần tạo `.env`; `.env.example` chỉ là tài liệu và không được tự động nạp.
+Node phải từ v24. Setup chọn tên đăng nhập mặc định **admin**, nhập mật khẩu quản trị do công ty chỉ định, tối thiểu 12 ký tự. Mật khẩu không hiện khi gõ và không ghi vào source. Chỉ setup lần đầu; khi đã có Admin phải đổi mật khẩu trên giao diện, không ghi đè bằng setup.
 
-| Dùng trên máy của bạn | Địa chỉ nhập vào trình duyệt |
-| --- | --- |
-| Không gian HR | `http://localhost:5173` |
-| Cổng ứng tuyển | `http://localhost:5173/tuyen-dung` |
+Nhập `http://localhost:5173` vào trình duyệt trên máy này để đăng nhập. Đây là địa chỉ chạy trên máy bạn, không phải website đã triển khai. Nội bộ không tự đăng nhập hoặc cho tự đổi vai trò. `.env.example` là tài liệu và không tự nạp.
 
-Đây là địa chỉ của máy cá nhân khi bạn chạy dự án, không phải liên kết preview hay website đã được triển khai trên Internet. API chạy nội bộ ở cổng 3000; trình duyệt dùng cổng 5173 để Vite chuyển tiếp `/api`.
+## Admin tạo người dùng
 
-Chế độ demo tự mở tài khoản HR và tạo 12 hồ sơ, 5 vị trí, 4 thành viên cùng các CV mẫu ở lần chạy đầu tiên. Không có mật khẩu demo cần nhập. Dữ liệu này lưu bền vững trong `.data/`, nên số lượng có thể thay đổi sau khi bạn thử thêm hồ sơ.
+Vào **Thành viên & phân quyền → Tạo tài khoản**:
 
-Nếu Windows PowerShell báo không được chạy `npm.ps1`, chuyển Terminal Profile sang **Command Prompt**, hoặc dùng `npm.cmd ci` và `npm.cmd run dev`. Không cần đổi chính sách bảo mật PowerShell trên toàn máy.
+- Họ và tên, tên đăng nhập (3–50 ký tự: chữ không dấu/số/dấu chấm/gạch dưới/gạch ngang).
+- Email không bắt buộc. Nếu có thì cũng dùng email để đăng nhập.
+- Vai trò: **Quản trị viên**, **Sếp**, **HR**.
+- Mật khẩu từ 12 ký tự; gửi riêng cho đúng nhân sự.
 
-## 4. Thử các chức năng chính
+Admin sửa tên/email/quyền, đặt mật khẩu mới, khóa/mở tài khoản từ danh sách. Khóa, đổi quyền hoặc mật khẩu thu hồi phiên đăng nhập cũ. Không thể tự khóa/hạ quyền Admin đang dùng.
 
-### HR tạo hồ sơ từ nguồn bên ngoài
+Tạo ít nhất một Sếp và một HR. Để thử hai vai trò, dùng trình duyệt hoặc cửa sổ riêng tư độc lập; các tab thông thường dùng chung cookie. Mỗi nhân sự đổi mật khẩu cá nhân tại trang này.
 
-1. Vào **Quản lý ứng viên → Thêm ứng viên** hoặc **Upload CV**.
-2. Nhập tên/số điện thoại/email đã có, chọn nguồn Facebook/Zalo/Email…, ngày nhận thực tế và vị trí nếu đã biết.
-3. Có thể để trống thông tin chưa có. Chọn **Lưu hồ sơ** để lưu trạng thái **Cần bổ sung**.
-4. Nếu email/số điện thoại có thể trùng, xác nhận cùng người để liên kết, hoặc chọn người khác và ghi lý do. Hệ thống giữ nguyên CV và thông tin gốc.
+## HR nhận hồ sơ và Sếp chọn CV
 
-### Ứng viên tự ứng tuyển
+1. Admin/HR tạo vị trí tại **Vị trí tuyển dụng → Tạo vị trí mới**. Không gian mới không có dữ liệu giả.
+2. HR dùng **Quản lý ứng viên → Thêm ứng viên / Upload CV**. Nhập những gì đã có, chọn nguồn, ngày nhận thực tế và vị trí; có thể lưu thiếu thông tin.
+3. CV mới cách ly. HR kiểm tra an toàn bằng quy trình bên ngoài rồi vào **CV & tài liệu → Ghi nhận kiểm tra** để ghi căn cứ. Chưa có quét virus tự động. Sếp sau đó xem PDF trực tiếp hoặc tải DOCX.
+4. Sếp mở hồ sơ, đọc CV trong **CV & tài liệu**. Về tab **Tổng quan** của hồ sơ → **Hẹn phỏng vấn**, chọn vị trí, phiên bản CV và ghi chú gửi HR.
+5. Yêu cầu được lưu cùng người chọn, thời điểm, CV và hiển thị tại dashboard/**Yêu cầu phỏng vấn**. Đây chưa phải giờ hẹn đã xác nhận hoặc quyết định tuyển dụng.
 
-1. Mở cổng tuyển dụng, chọn vị trí và điền biểu mẫu.
-2. Đính kèm PDF/DOCX tối đa 10 MB và xác nhận đồng ý xử lý dữ liệu.
-3. Hồ sơ mới được tiếp nhận; hồ sơ nghi trùng vào **Quản lý ứng viên → Chờ xác minh** để HR kiểm tra.
+Ứng viên tự gửi qua `/tuyen-dung`. Hồ sơ nghi trùng vào Chờ xác minh để HR xác nhận; không tự ghi đè hồ sơ/CV cũ. Link bổ sung do HR tạo có hạn và dùng một lần, thêm đúng hồ sơ. Link có hostname localhost chỉ dùng trên máy đang chạy ứng dụng; khi dùng chung cần mở qua hostname/IP/domain máy chủ.
 
-### Bổ sung vào hồ sơ hiện có
+## HR xếp lịch và dashboard
 
-1. Mở hồ sơ → **Mời bổ sung hồ sơ** → chọn thời hạn → **Tạo liên kết**.
-2. Sao chép liên kết và mở trong cửa sổ riêng tư trên cùng máy để thử như ứng viên không đăng nhập.
-3. Gửi thêm CV/portfolio/thông tin. Liên kết chỉ dùng một lần; CV cũ vẫn còn trong **CV & tài liệu**.
-4. Xem **Lịch sử** để biết ai cập nhật, khi nào và nội dung đã nhận.
+1. HR đọc yêu cầu và liên hệ ứng viên thống nhất thời gian.
+2. Chọn **Liên hệ & xếp lịch** → ngày, giờ bắt đầu, **thời lượng** (ví dụ 45/90 phút), người phỏng vấn, hình thức, địa điểm/link họp.
+3. Hệ thống tính giờ kết thúc và chặn trùng cả ứng viên và người phỏng vấn; các buổi trong tương lai, cùng ngày, 15–240 phút.
+4. **Tổng quan** và **Lịch phỏng vấn** có bảng theo ngày/khung giờ, số phút, ứng viên/vị trí/người phỏng vấn. Chọn ngày hoặc Ngày trước/Ngày sau/Hôm nay. Tất cả theo UTC+7.
+5. **Đổi lịch** cần lý do; hủy lịch đưa yêu cầu về chờ HR; chỉ hoàn thành sau giờ bắt đầu. Xem lịch sử trong hồ sơ.
 
-Liên kết có hostname `localhost` chỉ hoạt động trên máy đang chạy ứng dụng; không gửi cho ứng viên thật trên máy khác. Khi triển khai thật, cần domain/HTTPS và cấu hình ứng dụng tương ứng.
+Yêu cầu/lịch tự cập nhật mỗi 30 giây hoặc khi quay lại tab; dashboard có nút cập nhật. Đây là thông báo trong website, chưa gửi email tự động.
 
-### Kiểm tra vai trò Boss và Admin
+## Tác vụ và debug VS Code
 
-Vào **Thành viên & phân quyền → Vai trò trải nghiệm**. Chức năng đổi vai trò này chỉ có ở demo. Boss được xem dữ liệu nhưng không được sửa hồ sơ. Chưa có quy trình phê duyệt kết quả tuyển dụng.
+Terminal → Run Task: **Super Net: Cài dependencies**, **Chạy nội bộ**, **Kiểm tra TypeScript**, **Kiểm thử API**, **Build**. Ctrl+Shift+B (macOS Cmd+Shift+B) chạy build.
 
-## 5. Chạy qua menu và debug
+Để debug, dừng `npm run dev`, mở Run and Debug → **Super Net: Debug toàn bộ ứng dụng** → F5. API nội bộ và Vite chạy riêng. Đặt breakpoint ở `server/app.mjs` hoặc `server/internal.mjs`, thao tác trên website để xem request. Stop dừng cả hai phiên. Không cần extension trả phí.
 
-Repository có sẵn cấu hình trong `.vscode/`:
-
-- **Terminal → Run Task… → Super Net: Cài dependencies**: chạy `npm ci`.
-- **Super Net: Chạy demo**: chạy toàn bộ ứng dụng, tương đương `npm run dev`.
-- **Super Net: Kiểm tra TypeScript**, **Super Net: Kiểm thử API**, **Super Net: Build**: chạy các kiểm tra tương ứng.
-- **Ctrl+Shift+B** trên Windows/Linux hoặc **Cmd+Shift+B** trên macOS: chạy build.
-
-Để debug backend, dừng `npm run dev` trước để tránh trùng cổng. Mở **Run and Debug**, chọn **Super Net: Debug toàn bộ ứng dụng**, nhấn **F5**. VS Code sẽ chạy riêng API và Vite; mở ứng dụng trên trình duyệt như bước 3. Đặt breakpoint trong `server/app.mjs`, thực hiện thao tác trên website để dừng tại API tương ứng. Nút Stop sẽ dừng cả hai phiên debug.
-
-Không cần extension trả phí. TypeScript/JavaScript và Node debugger có sẵn trong VS Code. Có thể cài extension Playwright chính thức nếu muốn xem các test trình duyệt trong Test Explorer.
-
-## 6. Kiểm tra trước khi sửa hoặc gửi mã nguồn
-
-Mở một Terminal khác trong cùng thư mục:
+## Kiểm tra, cập nhật và dữ liệu
 
 ```bash
 npm run check
 npm test
-npm run build
-```
-
-Để chạy kiểm thử trình duyệt trên máy chưa có Chromium:
-
-```bash
 npx playwright install chromium
 npm run test:e2e
 ```
 
-Cấu hình tự dùng `/usr/bin/chromium` nếu có (môi trường Linux đám mây); các máy khác dùng Chromium do Playwright cài. Có thể đặt `CHROMIUM_PATH` nếu muốn chỉ định file thực thi riêng. Test dùng cổng 3100 và dữ liệu tạm riêng, không sửa `.data/` đang dùng.
+Linux có `/usr/bin/chromium` được tự nhận; nơi khác dùng Chromium của Playwright hoặc đặt `CHROMIUM_PATH`. Test dùng tài khoản/dữ liệu riêng, không thay database đang dùng. Hai cổng test là 3100 và 3110.
 
-Các kiểm thử đã chạy trong môi trường phát triển: 19 kiểm thử API, 5 kịch bản Chromium, TypeScript và build. Hướng dẫn Windows/macOS dùng lệnh và cấu hình hỗ trợ đa nền tảng; chưa kiểm chứng trên máy Windows/macOS thật.
-
-## 7. Sửa mã nguồn, cập nhật và dừng
-
-| Muốn thay đổi | Tệp/thư mục |
-| --- | --- |
-| Màn hình HR, dashboard, danh sách | `src/App.tsx` |
-| Chi tiết hồ sơ, CV, lịch sử | `src/detail.tsx` |
-| Biểu mẫu nội bộ | `src/forms.tsx` |
-| Cổng tuyển dụng và biểu mẫu công khai | `src/public.tsx` |
-| Màu sắc, bố cục, điện thoại | `src/styles.css` |
-| API, phân quyền, chống trùng | `server/app.mjs` |
-| Schema SQLite và dữ liệu demo | `server/db.mjs` |
-
-Vite tự cập nhật frontend khi lưu tệp; Node watch tự khởi động lại API khi sửa backend. Nhấn **Ctrl+C** ở Terminal đang chạy để dừng. Với debug, dùng nút Stop của VS Code.
-
-Lần sau, mở lại cùng thư mục và chạy `npm run dev`. Nếu chỉ khởi động lại thì không cần `npm ci` mỗi lần. Để lấy thay đổi từ GitHub, dừng ứng dụng, lưu/commit công việc đang sửa trước khi pull, rồi:
+Khi cập nhật, dừng dịch vụ, lưu/commit công việc đang sửa rồi:
 
 ```bash
 git pull --ff-only
@@ -138,19 +83,55 @@ npm ci
 npm run dev
 ```
 
-Không xóa `.data/` khi cập nhật vì đó là hồ sơ và CV bạn đã lưu. Git chỉ đồng bộ mã nguồn, không đồng bộ dữ liệu ứng viên. `.env`, `.data/`, `node_modules/`, `dist/` và kết quả test đã được bỏ qua bởi `.gitignore`.
+Không cần setup lại. Không xóa `.data/`: dữ liệu nội bộ nằm trong `.data/internal/`, gồm SQLite và documents, không đi theo GitHub. Muốn backup, dừng dịch vụ và sao lưu toàn bộ thư mục này. Chưa có backup tự động. Chạy `npm run demo` nếu chỉ muốn trải nghiệm dữ liệu giả riêng, không chạy cùng lúc với dev.
 
-## 8. Lỗi thường gặp
+## Chia sẻ cho các máy trong công ty
 
-| Hiện tượng | Cách xử lý |
+Build rồi phục vụ frontend và API chung một cổng:
+
+```bash
+npm run build
+```
+
+Linux/macOS:
+
+```bash
+HOST=0.0.0.0 npm start
+```
+
+Windows PowerShell:
+
+```powershell
+$env:HOST="0.0.0.0"
+npm start
+```
+
+Các máy khác dùng hostname/IP máy chủ và cổng 3000, không dùng localhost. Giới hạn truy cập trong mạng công ty hoặc reverse proxy. Nếu dùng HTTPS: đặt `NODE_ENV=production`, `DEMO_MODE=0`, `APP_ORIGIN` đúng origin HTTPS. Cookie Secure của production yêu cầu HTTPS; không bật cờ production khi thử HTTP trực tiếp. Máy chủ cần giữ dịch vụ chạy và cấu hình tự khởi động lại. Push GitHub không phải triển khai website.
+
+## Tệp và lỗi thường gặp
+
+| Nội dung | Tệp |
 | --- | --- |
-| Không tìm thấy `node:sqlite` | Đổi sang Node.js 24+, mở lại VS Code, chạy `npm ci`. |
-| `npm` không được nhận diện | Cài Node.js, mở lại VS Code, kiểm tra `node --version` và `npm --version`. |
-| Không tìm thấy `package.json` | Terminal đang sai thư mục; chuyển vào `HR-Recruitment-` chứa file này. |
-| Cổng 3000/5173 đang được dùng | Dừng phiên `npm run dev` hoặc debug trước đó; không chạy hai cách cùng lúc. |
-| `npm ci` lỗi kết nối | Kiểm tra Internet/proxy công ty, giữ TLS verification; không xóa lockfile hay tắt xác minh chứng chỉ để né lỗi. |
-| `npm run test:e2e` thiếu browser | Chạy `npx playwright install chromium`, rồi thử lại. |
-| Tài liệu bị chặn tải | File mới đang cách ly. Chỉ HR ghi nhận đã kiểm tra an toàn theo quy trình bên ngoài mới mở quyền tải. Đây chưa phải quét virus tự động. |
-| Liên kết bổ sung hết hiệu lực | HR tạo link mới; link có hạn, có thể bị thu hồi và chỉ dùng một lần. |
+| HR, pipeline, đăng nhập | `src/App.tsx` |
+| Dashboard, bảng lịch, yêu cầu, tài khoản | `src/internal.tsx` |
+| Bảng màu Super Net | `src/internal.css` |
+| Hồ sơ, xem CV | `src/detail.tsx` |
+| Biểu mẫu, thời lượng | `src/forms.tsx` |
+| API hồ sơ/xác thực | `server/app.mjs` |
+| API tài khoản/yêu cầu/lịch | `server/internal.mjs` |
+| Mật khẩu, khởi tạo Admin | `server/accounts.mjs` |
+| Schema/migrations | `server/db.mjs` |
 
-Chi tiết giới hạn của bản phát triển và cấu hình ngoài demo: xem [README](../README.md) và [thiết kế nghiệp vụ](design.md). Chưa triển khai AI dịch CV, email tự động, quy trình phê duyệt Boss hay các thành phần production được liệt kê trong README.
+| Lỗi | Xử lý |
+| --- | --- |
+| Không có node:sqlite | Dùng Node 24+, mở lại VS Code và npm ci. |
+| PowerShell chặn npm.ps1 | Dùng Terminal Profile Command Prompt hoặc npm.cmd; không cần đổi execution policy toàn máy. |
+| Không có package.json | Mở đúng thư mục HR-Recruitment-. |
+| Chưa có Admin | Chạy setup một lần, đúng DATA_DIR. |
+| Đổi máy không còn tài khoản | Khôi phục database riêng hoặc setup mới; dữ liệu không đồng bộ qua Git. |
+| Cổng bị chiếm | Dừng phiên dev/demo/debug/test cũ trước khi chạy lại. |
+| Đăng nhập HTTP không giữ phiên | Không bật NODE_ENV=production khi thử HTTP trực tiếp. |
+| Không xem được CV | HR kiểm tra an toàn; PDF xem trực tiếp, DOCX tải xuống. |
+| Không đặt được lịch | Kiểm tra liên hệ/consent, thời gian tương lai, cùng ngày, thời lượng và xung đột. |
+
+AI, email, phê duyệt offer, quét virus tự động và các giới hạn còn lại: xem [README](../README.md). Hướng dẫn Windows/macOS chưa được kiểm chứng trên máy Windows/macOS thật.

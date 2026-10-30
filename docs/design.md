@@ -2,6 +2,16 @@
 
 Tài liệu này cụ thể hóa yêu cầu hiện tại của Super Net. Hai tài liệu tham khảo mô tả phạm vi dài hạn rộng hơn; implementation tập trung vào tiếp nhận và bổ sung hồ sơ, không giả lập việc AI dịch CV hay Boss đã phê duyệt.
 
+## Bổ sung vận hành nội bộ
+
+`users` có tên đăng nhập duy nhất không phân biệt hoa/thường, trạng thái hoạt động, vai trò Admin/Sếp/HR; mật khẩu băm scrypt. Admin được khởi tạo một lần qua `npm run setup`, không có mật khẩu hardcode. Admin tạo/sửa/khóa/đặt lại mật khẩu user qua giao diện, đổi quyền hoặc mật khẩu sẽ thu hồi phiên cũ. Dữ liệu nội bộ ở `.data/internal/`, độc lập với demo `.data/`.
+
+`interview_requests` liên kết lượt ứng tuyển, phiên bản CV đã kiểm tra, người Sếp lựa chọn, ghi chú, giai đoạn trước đó và trạng thái chờ/đã lên lịch/đã hủy. Sếp hoặc Admin tạo yêu cầu bằng API riêng; HR không được tự chuyển giai đoạn sang Hẹn phỏng vấn. Yêu cầu có idempotency và duy nhất một yêu cầu chờ cho mỗi application. Đây là quyền lựa chọn CV để phỏng vấn, không phải duyệt offer hay tuyển dụng cuối cùng.
+
+HR nhận yêu cầu qua dashboard và danh sách tự cập nhật 30 giây. `interviews.request_id` gắn lịch với yêu cầu; tạo lịch và đánh dấu yêu cầu đã xử lý cùng một giao dịch. Giờ bắt đầu + thời lượng 15–240 phút tạo giờ kết thúc, lưu UTC chuẩn; bảng dashboard theo ngày hiển thị UTC+7. Kiểm tra overlap của người phỏng vấn lẫn ứng viên qua mọi lượt ứng tuyển. Đổi lịch có lý do và audit before/after; hủy lịch mở lại yêu cầu cũ để HR xếp lại. Không được hoàn thành lịch trước giờ bắt đầu hoặc thay giai đoạn thủ công khi còn lịch hoạt động.
+
+API bổ sung: `GET/POST /api/v1/admin/users`, `PATCH /api/v1/admin/users/:id`, `POST /api/v1/me/password`, `GET /api/v1/interview-requests`, `POST /api/v1/applications/:id/interview-requests`, `PATCH /api/v1/interview-requests/:id`, `GET /api/v1/documents/:id/preview`. `POST/PATCH /api/v1/interviews` hỗ trợ thời lượng và đổi lịch. Endpoint PDF cần phiên đăng nhập, trạng thái đã kiểm tra và ghi nhật ký xem; DOCX tải bằng API riêng.
+
 ## Mô hình dữ liệu
 
 ```mermaid

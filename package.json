@@ -10,6 +10,8 @@
     "dev": "node scripts/dev.mjs",
     "build": "vite build",
     "start": "node server/index.mjs",
+    "setup": "node scripts/setup.mjs",
+    "demo": "node scripts/demo.mjs",
     "test": "node --test --test-concurrency=1 tests/*.test.mjs",
     "check": "tsc --noEmit",
     "create-user": "node scripts/create-user.mjs",

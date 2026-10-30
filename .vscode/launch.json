@@ -4,10 +4,10 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Super Net: API (demo)",
+      "name": "Super Net: API (nội bộ)",
       "program": "${workspaceFolder}/server/index.mjs",
       "cwd": "${workspaceFolder}",
-      "env": { "DEMO_MODE": "1", "NODE_ENV": "development" },
+      "env": { "DEMO_MODE": "0", "NODE_ENV": "development" },
       "console": "integratedTerminal",
       "skipFiles": ["<node_internals>/**"]
     },
@@ -24,7 +24,7 @@
   "compounds": [
     {
       "name": "Super Net: Debug toàn bộ ứng dụng",
-      "configurations": ["Super Net: API (demo)", "Super Net: Vite"],
+      "configurations": ["Super Net: API (nội bộ)", "Super Net: Vite"],
       "stopAll": true
     }
   ]

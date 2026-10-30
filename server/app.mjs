@@ -7,6 +7,8 @@ import { randomBytes } from 'node:crypto';
 import { readFileSync, writeFileSync, unlinkSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { openDatabase, id, now, hash, transaction, audit, duplicateMatches, completeness, normalizeEmail, normalizePhone, verifyPassword, STAGES, SOURCES } from './db.mjs';
+import { publicUser, normalizeUsername } from './accounts.mjs';
+import { registerInternalRoutes } from './internal.mjs';
 
 const text = (max = 200) => z.string().trim().max(max).default('');
 const emailValue = z.string().trim().max(254).pipe(z.union([z.literal(''), z.email()]));
@@ -35,7 +37,7 @@ const patchSchema = z.object({
 });
 const fail = (status, message, extra = {}) => { const error = new Error(message); error.status = status; Object.assign(error, extra); throw error; };
 
-export function createApp({ dataDir = resolve('.data'), demo = false } = {}) {
+export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.data/internal') } = {}) {
   const db = openDatabase(dataDir, demo);
   const app = express();
   app.disable('x-powered-by');
@@ -72,9 +74,9 @@ export function createApp({ dataDir = resolve('.data'), demo = false } = {}) {
   }
   function staff(req, res, next) {
     const cookie = req.headers.cookie?.split(';').map(x => x.trim()).find(x => x.startsWith('sn_session='))?.slice(11);
-    const user = cookie && db.prepare(`SELECT u.id,u.name,u.email,u.role,u.is_demo FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>? AND (?=1 OR u.is_demo=0)`).get(hash(cookie), now(), demo ? 1 : 0);
+    const user = cookie && db.prepare(`SELECT u.id,u.name,u.email,u.username,u.role,u.active,u.is_demo FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>? AND u.active=1 AND u.id!='public' AND u.is_demo=?`).get(hash(cookie), now(), demo ? 1 : 0);
     if (!user) return res.status(401).json({ message: 'Vui lòng đăng nhập.' });
-    req.user = user;
+    req.user = publicUser(user);
     next();
   }
   function editor(req, res, next) { if (!['hr','admin'].includes(req.user.role)) return res.status(403).json({ message: 'Chỉ HR hoặc Admin được cập nhật hồ sơ.' }); next(); }
@@ -83,7 +85,7 @@ export function createApp({ dataDir = resolve('.data'), demo = false } = {}) {
     db.prepare('DELETE FROM sessions WHERE expires_at <= ?').run(now());
     db.prepare('INSERT INTO sessions VALUES(?,?,?)').run(hash(token), user.id, new Date(Date.now() + 8 * 3600000).toISOString());
     res.cookie('sn_session', token, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', maxAge: 8 * 3600000, path: '/' });
-    return { id: user.id, name: user.name, email: user.email, role: user.role, is_demo: user.is_demo };
+    return publicUser(user);
   }
   function validateFile(file) {
     if (!file) return;
@@ -113,7 +115,7 @@ export function createApp({ dataDir = resolve('.data'), demo = false } = {}) {
     if (candidateId) audit(db, candidateId, actorId, 'document.uploaded', { documentId: docId, name: file.originalname, version, reviewStatus: 'quarantined' });
   }
   function assertJob(jobId) { if (jobId && !db.prepare("SELECT id FROM jobs WHERE id=? AND status='open'").get(jobId)) fail(400, 'Vị trí không tồn tại hoặc đã ngừng tuyển.'); }
-  function assertOwner(ownerId) { if (ownerId && !db.prepare("SELECT id FROM users WHERE id=? AND role IN ('hr','admin') AND id!='public'").get(ownerId)) fail(400, 'Người phụ trách không hợp lệ.'); }
+  function assertOwner(ownerId) { if (ownerId && !db.prepare("SELECT id FROM users WHERE id=? AND role IN ('hr','admin') AND id!='public' AND active=1 AND is_demo=?").get(ownerId, demo ? 1 : 0)) fail(400, 'Người phụ trách không hợp lệ hoặc đã bị khóa.'); }
   function addApplication(cid, data, actorId) {
     if (!data.jobId) return;
     assertJob(data.jobId);
@@ -160,7 +162,7 @@ export function createApp({ dataDir = resolve('.data'), demo = false } = {}) {
   }
 
   app.get('/api/v1/health', (req, res) => { db.prepare('SELECT 1').get(); res.json({ status: 'ok', demo }); });
-  app.get('/api/v1/config', (req, res) => res.json({ demo, policyVersion: 'recruitment-v1' }));
+  app.get('/api/v1/config', (req, res) => res.json({ demo, needsSetup: !demo && !db.prepare("SELECT id FROM users WHERE role='admin' AND active=1 AND is_demo=0 AND id!='public'").get(), policyVersion: 'recruitment-v1' }));
   app.post('/api/v1/demo-session', (req, res) => {
     if (!demo) return res.sendStatus(404);
     const role = z.enum(['hr','admin','boss']).parse(req.body.role || 'hr');
@@ -168,9 +170,10 @@ export function createApp({ dataDir = resolve('.data'), demo = false } = {}) {
     res.json({ user: session(res, user) });
   });
   app.post('/api/v1/login', (req, res) => {
-    const input = z.object({ email: z.email(), password: z.string().min(1).max(256) }).parse(req.body);
-    const user = db.prepare("SELECT * FROM users WHERE email=? AND is_demo=0 AND id!='public'").get(normalizeEmail(input.email));
-    if (!user || !verifyPassword(input.password, user.password_hash)) fail(401, 'Email hoặc mật khẩu không đúng.');
+    const input = z.object({ login: z.string().trim().min(1).max(254), password: z.string().min(1).max(128) }).parse({ ...req.body, login: req.body.login || req.body.email });
+    const login = normalizeUsername(input.login);
+    const user = db.prepare("SELECT * FROM users WHERE (username=? COLLATE NOCASE OR email=? COLLATE NOCASE) AND is_demo=0 AND active=1 AND id!='public'").get(login, login);
+    if (!user || !verifyPassword(input.password, user.password_hash)) fail(401, 'Tài khoản hoặc mật khẩu không đúng.');
     res.json({ user: session(res, user) });
   });
   app.get('/api/v1/me', staff, (req, res) => res.json({ user: req.user }));
@@ -179,7 +182,7 @@ export function createApp({ dataDir = resolve('.data'), demo = false } = {}) {
     if (cookie) db.prepare('DELETE FROM sessions WHERE token_hash=?').run(hash(cookie));
     res.clearCookie('sn_session', { path: '/' }); res.json({ ok: true });
   });
-  app.get('/api/v1/users', staff, (req, res) => res.json(db.prepare("SELECT id,name,role FROM users WHERE id!='public' ORDER BY name").all()));
+  registerInternalRoutes(app, { db, staff, editor, demo, getCandidate, idempotent });
   app.get('/api/v1/jobs', staff, (req, res) => res.json(db.prepare(`SELECT j.*, (SELECT COUNT(*) FROM applications a WHERE a.job_id=j.id) AS application_count FROM jobs j ORDER BY created_at DESC`).all()));
   app.post('/api/v1/jobs', staff, editor, (req, res) => {
     const data = z.object({ title: z.string().trim().min(2).max(120), department: z.string().trim().min(1).max(120), location: z.string().trim().min(1).max(200), description: z.string().trim().min(20).max(10000), openings: z.coerce.number().int().min(1).max(1000) }).parse(req.body);
@@ -273,6 +276,14 @@ export function createApp({ dataDir = resolve('.data'), demo = false } = {}) {
     audit(db, doc.candidate_id, req.user.id, 'document.downloaded', { documentId: doc.id });
     res.set('Content-Type', doc.mime_type); res.attachment(doc.original_name); res.sendFile(resolve(dataDir, 'documents', doc.stored_name));
   });
+  app.get('/api/v1/documents/:id/preview', staff, (req, res) => {
+    const doc = db.prepare('SELECT * FROM documents WHERE id=? AND candidate_id IS NOT NULL').get(req.params.id);
+    if (!doc) fail(404, 'Không tìm thấy tài liệu.');
+    if (doc.review_status !== 'reviewed') fail(423, 'CV đang cách ly, cần được HR kiểm tra trước khi xem.');
+    if (doc.mime_type !== 'application/pdf') fail(415, 'Chỉ PDF hỗ trợ xem trực tiếp. Vui lòng tải DOCX để đọc.');
+    audit(db, doc.candidate_id, req.user.id, 'document.viewed', { documentId: doc.id, version: doc.version });
+    res.type('application/pdf').set('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(doc.original_name)}`).sendFile(resolve(dataDir, 'documents', doc.stored_name));
+  });
   app.post('/api/v1/candidates/:id/applications', staff, editor, (req, res) => {
     const candidate = getCandidate(req.params.id);
     const data = z.object({ jobId: z.string().min(1), source: z.enum(SOURCES) }).parse(req.body);
@@ -284,10 +295,17 @@ export function createApp({ dataDir = resolve('.data'), demo = false } = {}) {
     const application = db.prepare('SELECT * FROM applications WHERE id=?').get(req.params.id);
     if (!application) fail(404, 'Không tìm thấy lượt ứng tuyển.');
     if (['hired','offered'].includes(stage)) fail(403, 'Quyết định tuyển dụng cần quy trình phê duyệt của Boss; chưa mở trong phiên bản tiếp nhận hồ sơ.');
+    if (['interview_requested','scheduled'].includes(stage)) fail(403, 'Hãy dùng chức năng Hẹn phỏng vấn của Sếp hoặc Xếp lịch của HR.');
+    if (application.stage === 'interview_requested' && stage !== 'rejected') fail(409, 'Yêu cầu của Sếp đang chờ HR xếp lịch; không chuyển giai đoạn bằng thao tác thủ công.');
+    if (db.prepare("SELECT id FROM interviews WHERE application_id=? AND status='scheduled'").get(application.id)) fail(409, 'Hãy hoàn thành hoặc hủy lịch phỏng vấn trước khi chuyển giai đoạn.');
     if (stage === 'rejected' && reason.length < 5) fail(400, 'Cần ghi lý do kết thúc hồ sơ.');
     if (['hired','offered'].includes(application.stage)) fail(403, 'Không được sửa lượt ứng tuyển đã có quyết định trong phiên bản này.');
     if (!['hired','rejected'].includes(stage) && db.prepare("SELECT id FROM applications WHERE candidate_id=? AND job_id=? AND id!=? AND stage NOT IN ('hired','rejected')").get(application.candidate_id, application.job_id, application.id)) fail(409, 'Đã có một lượt ứng tuyển đang xử lý cho vị trí này. Không thể mở lại lượt cũ.');
-    transaction(db, () => { db.prepare('UPDATE applications SET stage=? WHERE id=?').run(stage, application.id); audit(db, application.candidate_id, req.user.id, 'application.stage_changed', { applicationId: application.id, before: application.stage, after: stage, reason }); });
+    transaction(db, () => {
+      db.prepare('UPDATE applications SET stage=? WHERE id=?').run(stage, application.id);
+      if (stage === 'rejected') db.prepare("UPDATE interview_requests SET status='cancelled',updated_at=? WHERE application_id=? AND status='pending'").run(now(), application.id);
+      audit(db, application.candidate_id, req.user.id, 'application.stage_changed', { applicationId: application.id, before: application.stage, after: stage, reason });
+    });
     res.json({ ok: true });
   });
   app.post('/api/v1/candidates/:id/update-links', staff, editor, (req, res) => {
@@ -334,34 +352,6 @@ export function createApp({ dataDir = resolve('.data'), demo = false } = {}) {
       return { candidate: getCandidate(cid) };
     });
   });
-  app.get('/api/v1/interviews', staff, (req, res) => res.json(db.prepare(`SELECT i.*,u.name AS interviewer_name,c.full_name AS candidate_name,c.id AS candidate_id,j.title AS job_title
-    FROM interviews i JOIN users u ON u.id=i.interviewer_id JOIN applications a ON a.id=i.application_id JOIN candidates c ON c.id=a.candidate_id JOIN jobs j ON j.id=a.job_id ORDER BY starts_at`).all()));
-  app.post('/api/v1/interviews', staff, editor, (req, res) => {
-    const data = z.object({ applicationId: z.string().min(1), interviewerId: z.string().min(1), startsAt: z.iso.datetime(), endsAt: z.iso.datetime(), mode: z.enum(['Online','Trực tiếp','Điện thoại']), location: z.string().trim().min(2).max(1000) }).parse(req.body);
-    const application = db.prepare('SELECT * FROM applications WHERE id=?').get(data.applicationId);
-    if (!application) fail(400, 'Lượt ứng tuyển không hợp lệ.');
-    if (['hired','offered','rejected'].includes(application.stage)) fail(409, 'Không thể đặt lịch cho lượt ứng tuyển đã kết thúc hoặc đã có quyết định.');
-    const candidate = getCandidate(application.candidate_id);
-    if ((!candidate.email && !candidate.phone) || candidate.consent_status !== 'granted') fail(409, 'Cần thông tin liên hệ và sự đồng ý xử lý dữ liệu trước khi xếp lịch.');
-    if (new Date(data.startsAt) <= new Date() || new Date(data.endsAt) <= new Date(data.startsAt)) fail(400, 'Thời gian phỏng vấn phải trong tương lai; giờ kết thúc phải sau giờ bắt đầu.');
-    if (!db.prepare("SELECT id FROM users WHERE id=? AND id!='public'").get(data.interviewerId)) fail(400, 'Người phỏng vấn không hợp lệ.');
-    const iid = id();
-    transaction(db, () => {
-      const overlap = db.prepare("SELECT id FROM interviews WHERE interviewer_id=? AND status='scheduled' AND starts_at < ? AND ends_at > ?").get(data.interviewerId, data.endsAt, data.startsAt);
-      if (overlap) fail(409, 'Người phỏng vấn đã có lịch trong khoảng thời gian này.');
-      db.prepare('INSERT INTO interviews(id,application_id,interviewer_id,starts_at,ends_at,mode,location,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?)').run(iid, data.applicationId, data.interviewerId, data.startsAt, data.endsAt, data.mode, data.location, req.user.id, now());
-      db.prepare("UPDATE applications SET stage='scheduled' WHERE id=? AND stage NOT IN ('offered','hired','rejected')").run(application.id);
-      audit(db, candidate.id, req.user.id, 'interview.created', { interviewId: iid, ...data });
-    }); res.status(201).json({ id: iid });
-  });
-  app.patch('/api/v1/interviews/:id', staff, editor, (req, res) => {
-    const { status } = z.object({ status: z.enum(['completed','cancelled']) }).parse(req.body);
-    const interview = db.prepare('SELECT i.*,a.candidate_id FROM interviews i JOIN applications a ON a.id=i.application_id WHERE i.id=?').get(req.params.id);
-    if (!interview) fail(404, 'Không tìm thấy lịch.');
-    transaction(db, () => { db.prepare('UPDATE interviews SET status=? WHERE id=?').run(status, interview.id); audit(db, interview.candidate_id, req.user.id, `interview.${status}`, { interviewId: interview.id }); });
-    res.json({ ok: true });
-  });
-
   app.get('/api/v1/public/jobs', (req, res) => res.json(db.prepare("SELECT id,title,department,location,employment_type,description,openings FROM jobs WHERE status='open' ORDER BY created_at").all()));
   app.post('/api/v1/public/applications', stagedFiles, (req, res) => {
     const parsed = publicSchema.parse(req.body);

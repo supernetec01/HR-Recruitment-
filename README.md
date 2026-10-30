@@ -1,104 +1,83 @@
 # Super Net Recruitment Hub
 
-Phiên bản phát triển chạy được cho quy trình **một hồ sơ cá nhân, nhiều lượt ứng tuyển và nhiều lần bổ sung**. Giao diện tiếng Việt, tối ưu cho HR trên máy tính và dùng được trên điện thoại. Dữ liệu lưu ở máy chủ, không dùng localStorage để giả lập cơ sở dữ liệu.
+Website tuyển dụng nội bộ: **Admin cấp tài khoản → HR tiếp nhận CV → Sếp chọn Hẹn phỏng vấn → HR liên hệ, chọn ngày/giờ/thời lượng → lịch hiển thị trên dashboard**.
 
-Ảnh giao diện đã chạy trên Chromium: [HR trên máy tính](docs/screenshots/hr-desktop.png), [HR trên điện thoại](docs/screenshots/hr-mobile.png), [cổng ứng tuyển](docs/screenshots/careers.png). Ảnh chỉ chứa dữ liệu minh họa.
+Bảng màu Super Net: navy `#034969`, xanh dương `#149cd0`, xanh lá `#93c947`. Một hồ sơ ứng viên gốc, nhiều lượt ứng tuyển và nhiều phiên bản CV.
 
-**Mới bắt đầu?** Xem [hướng dẫn VS Code từng bước](docs/vscode.md): tải mã nguồn từ GitHub, cài Node.js, chạy demo, thử ba luồng hồ sơ, debug và xử lý lỗi trên Windows/macOS/Linux.
+## Cài đặt trong VS Code
 
-## Chạy nhanh
-
-Yêu cầu Node.js **24 trở lên**, npm và hệ thống tập tin có quyền ghi.
+Cài Git, **Node.js 24+** và VS Code. Trong Terminal:
 
 ```bash
+git clone https://github.com/supernetec01/HR-Recruitment-.git
 cd HR-Recruitment-
 npm ci
+npm run setup
 npm run dev
 ```
 
-Lệnh `dev` khởi động Vite ở cổng 5173 và API ở cổng 3000. Proxy Vite chuyển `/api` tới API. Chế độ demo được bật rõ ràng trong lệnh này và tạo 12 ứng viên, 5 vị trí, 4 nhân sự cùng các CV PDF minh họa. Không nhập CV thật vào demo. Không cần token GitHub, API AI, dịch vụ email hoặc tài khoản cơ sở dữ liệu để chạy bản phát triển.
+`setup` chỉ chạy ở lần cài đầu tiên: tên đăng nhập mặc định `admin`, nhập mật khẩu quản trị do công ty chỉ định. Mật khẩu không hiển thị khi gõ, không có mật khẩu mặc định trong source, chỉ lưu băm scrypt trong SQLite. Nếu đã có Admin, setup từ chối ghi đè; quản lý mật khẩu bằng giao diện.
 
-Đường dẫn ứng dụng:
+`dev` chạy API cổng 3000 và Vite cổng 5173. Nhập `http://localhost:5173` trong trình duyệt **máy đang chạy dự án** và đăng nhập. Đây là địa chỉ chạy tại máy bạn, không phải website đã triển khai. Không cần `.env`; `.env.example` chỉ là tài liệu và không tự nạp.
 
-| Đường dẫn | Chức năng |
-| --- | --- |
-| `/` | Không gian HR; mặc định là quản lý ứng viên |
-| `/?page=overview` | Dashboard từ dữ liệu trong hệ thống |
-| `/?page=pipeline` | Pipeline theo từng lượt ứng tuyển |
-| `/?page=jobs` | Quản lý vị trí tuyển dụng |
-| `/?page=interviews` | Lịch nội bộ và kiểm tra trùng giờ |
-| `/?page=reports` | Nguồn tiếp nhận, vị trí và giai đoạn |
-| `/?page=settings` | Thành viên, ma trận quyền và đổi vai trò trong demo |
-| `/tuyen-dung` | Cổng ứng tuyển công khai |
-| `/ung-tuyen/:jobId` | Nộp hồ sơ cho một vị trí |
-| `/bo-sung/:token` | Bổ sung vào đúng hồ sơ; liên kết có hạn và dùng một lần |
+Xem [hướng dẫn VS Code và sử dụng](docs/vscode.md), [thiết kế dữ liệu](docs/design.md). Ảnh giao diện dùng dữ liệu kiểm thử: [Dashboard](docs/screenshots/hr-desktop.png), [Điện thoại](docs/screenshots/hr-mobile.png).
 
-Các địa chỉ loopback chỉ dùng để kiểm tra bên trong môi trường. Tài liệu này không tạo liên kết preview hay xuất bản ứng dụng.
+## Phân quyền
 
-## Những luồng đã triển khai
+| Chức năng | Admin | Sếp | HR |
+| --- | --- | --- | --- |
+| Tạo user, đổi quyền, khóa/mở, đặt lại mật khẩu | Có | — | — |
+| Xem hồ sơ, CV đã kiểm tra, dashboard/báo cáo | Có | Có | Có |
+| Tiếp nhận/sửa hồ sơ, upload CV, xác minh trùng | Có | — | Có |
+| Chọn CV và yêu cầu Hẹn phỏng vấn | Có | Có | — |
+| Nhận yêu cầu, liên hệ, tạo/đổi/hủy lịch | Có | — | Có |
+| Quản lý vị trí tuyển dụng | Có | — | Có |
+| Đổi mật khẩu cá nhân | Có | Có | Có |
 
-1. **HR tiếp nhận hồ sơ** từ Facebook, Zalo, email, TopCV, giới thiệu, giấy hoặc nguồn khác. Có hai điểm vào: Thêm ứng viên và Upload CV. Có thể lưu chỉ với một thông tin hoặc tệp CV; phần còn thiếu được đánh dấu để bổ sung sau.
-2. **Ứng viên tự nộp**: chọn vị trí đang tuyển, điền ít nhất một thông tin liên hệ, gửi CV và xác nhận thông báo xử lý dữ liệu. Không cần tài khoản.
-3. **Kiểm tra trùng** bằng email viết thường và số điện thoại đã chuẩn hóa (`+84` về `0`). HR xác nhận liên kết hoặc xác nhận là người khác kèm lý do. Hồ sơ công khai nghi trùng được giữ trong hàng chờ; API không tiết lộ hồ sơ đã có cho người nộp.
-4. **Giữ hồ sơ gốc**: liên kết không ghi đè tên, thông tin liên hệ, nguồn đầu tiên, sự đồng ý hoặc CV cũ. Thông tin vừa nhận được lưu trong nhật ký để HR đối chiếu. Mỗi tệp mới là một phiên bản riêng.
-5. **Nhiều lượt ứng tuyển**: mỗi vị trí có một lượt đang xử lý cho cùng ứng viên. Gửi bổ sung cho cùng lượt đang xử lý không tạo thêm lượt. Nếu lượt trước đã kết thúc (`hired`/`rejected`), ứng tuyển lại tạo lượt mới và giữ nguyên hồ sơ cá nhân.
-6. **Liên kết bổ sung**: HR chọn hạn 24 giờ, 3 ngày hoặc 7 ngày; chỉ lưu mã băm của token. Ứng viên có thể thêm CV, portfolio, thông tin thiếu và lời nhắn. Link không cho đọc dữ liệu gốc hay tự ghi đè thông tin đã có. Có thể thu hồi; rút lại sự đồng ý sẽ thu hồi các link đang hoạt động.
-7. **Nhật ký**: ghi người thực hiện, thời điểm, nội dung trước/sau khi chỉnh sửa, nguồn, ngày nhận thực tế, ngày nhập hệ thống, sự đồng ý, liên kết, chuyển giai đoạn, xem và tải tài liệu.
-8. **Quản lý tập trung**: tìm kiếm có/không dấu, lọc nguồn/vị trí/HR/giai đoạn, phân trang, phân công nhiều hồ sơ, xuất CSV (chống công thức bảng tính), chi tiết ứng viên và báo cáo từ dữ liệu thật.
-9. **Lịch phỏng vấn nội bộ**: tạo lịch với một người phỏng vấn, kiểm tra trùng khoảng thời gian trong giao dịch, chặn thiếu liên hệ/sự đồng ý, ghi hoàn thành/hủy. Thời gian hiển thị theo UTC+7.
+Backend kiểm tra quyền trên từng API. Khóa tài khoản, đổi quyền hoặc đặt lại mật khẩu thu hồi các phiên đăng nhập. Không thể tự khóa/hạ quyền Admin đang dùng hoặc làm mất quản trị viên cuối cùng.
 
-## Kiểm tra
+## Quy trình sử dụng
+
+1. **Admin:** Thành viên & phân quyền → Tạo tài khoản. Điền họ tên, tên đăng nhập, vai trò, mật khẩu từ 12 ký tự; email không bắt buộc. Tạo tài khoản Sếp và HR. Mở vị trí tuyển dụng trong trang Vị trí tuyển dụng.
+2. **HR:** Thêm ứng viên / Upload CV từ Facebook, email, Zalo… Có thể lưu thiếu thông tin; giữ nguồn và ngày nhận thực tế. PDF/DOCX tối đa 10 MB, được cách ly. HR kiểm tra an toàn qua quy trình bên ngoài rồi ghi căn cứ tại CV & tài liệu → Ghi nhận kiểm tra. Chưa có quét virus tự động.
+3. **Sếp:** Mở hồ sơ → CV & tài liệu → Xem CV (PDF; DOCX tải xuống). Tại Tổng quan của hồ sơ, chọn Hẹn phỏng vấn, đúng vị trí và phiên bản CV, ghi chú gửi HR. Đây là yêu cầu xếp lịch, chưa phải giờ hẹn hoặc quyết định tuyển dụng.
+4. **HR:** Nhận yêu cầu trên dashboard/Yêu cầu phỏng vấn. Liên hệ ứng viên rồi chọn Liên hệ & xếp lịch: ngày, giờ bắt đầu, thời lượng 15–240 phút, người phỏng vấn và địa điểm. Giờ kết thúc tự tính; kiểm tra trùng cả ứng viên lẫn người phỏng vấn.
+5. **Dashboard:** Bảng theo ngày, khung giờ, số phút, ứng viên, vị trí và người phỏng vấn, theo UTC+7. Đổi lịch cần lý do; hủy lịch đưa yêu cầu về chờ HR; hoàn thành chỉ sau giờ bắt đầu. Nhật ký giữ người và nội dung thay đổi. Tự cập nhật mỗi 30 giây hoặc khi trở lại tab; có nút cập nhật thủ công.
+
+Cổng `/tuyen-dung` cho ứng viên tự gửi; nghi trùng được đưa vào Chờ xác minh để HR quyết định, không tự ghi đè danh tính/CV. HR có thể tạo link bổ sung có hạn, dùng một lần để thêm đúng hồ sơ. Những luồng tiếp nhận trước đây được giữ nguyên.
+
+## Dữ liệu và vận hành
+
+- Nội bộ mặc định: `.data/internal/recruitment.sqlite` và `.data/internal/documents/`. Không tạo user/ứng viên giả; Admin được tạo bằng setup, các dữ liệu khác qua giao diện.
+- Dữ liệu được giữ sau khi khởi động lại. **Không xóa `.data/` để cập nhật.** GitHub chỉ lưu source, không lưu tài khoản/mật khẩu/CV. Khi clone máy khác cần setup mới hoặc khôi phục database đã sao lưu.
+- Sao lưu nhất quán: dừng dịch vụ rồi sao lưu toàn bộ `.data/internal/` vào vùng riêng được bảo vệ; khôi phục cả SQLite và documents cùng nhau. Chưa có backup tự động.
+- `DATA_DIR` chọn thư mục dữ liệu riêng. Đổi thư mục không tự chuyển tài khoản từ nơi cũ.
+
+Máy chủ công ty:
+
+```bash
+npm ci
+npm run setup
+npm run build
+npm start
+```
+
+Bỏ qua setup nếu đã có Admin. `start` phục vụ frontend đã build và API chung cổng 3000, bind 127.0.0.1 mặc định. Cho máy khác trong công ty truy cập: đặt `HOST=0.0.0.0`, giới hạn truy cập trong mạng công ty/reverse proxy và dùng IP/hostname máy chủ thay cho localhost.
+
+Trên Linux/macOS: `HOST=0.0.0.0 npm start`. PowerShell: đặt `$env:HOST="0.0.0.0"`, rồi `npm start`. Khi dùng HTTPS, đặt `NODE_ENV=production`, `DEMO_MODE=0`, `APP_ORIGIN` đúng origin HTTPS. Production bật cookie Secure nên không dùng cờ này trong lúc thử bằng HTTP trực tiếp. Cần quản lý khởi động lại dịch vụ trên máy chủ. Phiên này chưa triển khai lên domain hay máy chủ công ty.
+
+## Demo riêng và kiểm thử
+
+`npm run demo` mới bật dữ liệu minh họa và nút đổi vai trò, lưu trong `.data/`, tách khỏi `.data/internal/`. Không dùng CV thật trong demo. Không chạy demo/dev cùng lúc vì dùng chung cổng. API ngoài demo không nhận phiên demo hoặc cho đổi vai trò tự do.
 
 ```bash
 npm run check
 npm test
-npm run build
 npm run test:e2e
 ```
 
-- `check`: TypeScript frontend.
-- `test`: kiểm thử tích hợp API bằng Node test runner, SQLite thật và cổng loopback tạm thời. Mỗi lần chạy có thư mục dữ liệu riêng rồi dọn sạch.
-- `test:e2e`: build rồi kiểm thử bằng Playwright/Chromium, dùng máy chủ riêng ở cổng 3100 và thư mục SQLite tạm riêng. Bao phủ HR nhập thiếu, phát hiện trùng, xác minh hồ sơ website, CV nhiều phiên bản, liên kết bổ sung không đăng nhập, lọc/phân công/phân quyền và màn hình 390px.
-- Chromium trong môi trường này ở `/usr/bin/chromium` và được tự nhận diện nếu có. Trên máy khác, chạy `npx playwright install chromium`; cấu hình sẽ dùng Chromium do Playwright cài. `CHROMIUM_PATH` cho phép chỉ định trình duyệt riêng. Không tắt kiểm tra TLS khi cài dependencies/trình duyệt.
+TypeScript kiểm tra frontend, cấu hình và test trình duyệt. Test API dùng SQLite/cổng tạm thật. Playwright build rồi chạy hai máy chủ riêng: demo ở 3100, nội bộ ở 3110; mật khẩu test sinh ngẫu nhiên và dữ liệu tách khỏi môi trường vận hành. Dùng `/usr/bin/chromium` nếu có, máy khác chạy `npx playwright install chromium`; `CHROMIUM_PATH` cho phép ghi đè.
 
-Nếu sandbox chặn mở socket loopback hoặc truy cập npm/Git, chạy qua quyền mạng được nền tảng hỗ trợ; không đổi proxy hay vô hiệu hóa xác minh chứng chỉ. Trong máy hiện tại, GitHub và npm hoạt động qua proxy khi có quyền mạng.
+## Phạm vi còn lại
 
-## Dữ liệu & kiến trúc
-
-- Frontend: React 19, TypeScript, Vite, Lucide; CSS responsive; font tiếng Việt được đóng gói cục bộ.
-- Backend: Express 5, Zod; REST `/api/v1`.
-- Database phát triển: SQLite tích hợp Node (`node:sqlite`), khóa ngoại, WAL, giao dịch và chỉ mục chống hai lượt đang xử lý cho cùng vị trí/ứng viên.
-- Dữ liệu mặc định: `.data/recruitment.sqlite`; tài liệu riêng trong `.data/documents`. Thư mục không được phục vụ dưới dạng static và được bỏ qua bởi Git.
-- `DATA_DIR` thay đổi nơi lưu. Thư mục dữ liệu phải được giữ cùng ứng dụng qua các lần khởi động. Không ghi đè hoặc xóa nó khi cài lại dependencies.
-- Các tệp tải lên được kiểm tra đuôi/chữ ký cơ bản, giới hạn 10 MB, lưu tên ngẫu nhiên và **cách ly mặc định**. Chỉ có thể tải sau khi HR ghi nhận căn cứ kiểm tra an toàn thủ công. Đây không phải bộ quét malware; chưa được dùng thay quy trình quét virus trong vận hành thật.
-- `candidate`, `application`, `document`, `submission`, `interview`, `audit_log`, `update_token` là các đối tượng riêng. Thiết kế và giới hạn chi tiết ở [docs/design.md](docs/design.md).
-
-## Xác thực và quyền
-
-Phiên bản này hỗ trợ đăng nhập email/mật khẩu và phiên HttpOnly 8 giờ. Mật khẩu băm scrypt, token phiên và link bổ sung băm SHA-256. Cookie SameSite, kiểm tra Origin và header riêng cho các thao tác nội bộ, rate limit ở đăng nhập/cổng công khai. Mọi API nội bộ yêu cầu phiên; quyền ghi được kiểm tra ở backend.
-
-| Vai trò | Quyền hiện có |
-| --- | --- |
-| HR | Xem và cập nhật toàn bộ hồ sơ trong không gian, CV, xác minh trùng, vị trí và lịch |
-| Boss | Chỉ đọc hồ sơ, CV đã kiểm tra, lịch và báo cáo |
-| Admin | Quyền ghi vận hành như HR; tạo tài khoản qua lệnh phía máy chủ |
-
-Phê duyệt quyết định của Boss **chưa triển khai**. Backend chặn tự chuyển sang `offered` hoặc `hired`; không có nút giả để duyệt. Các trạng thái offer/hired trong demo là dữ liệu minh họa. HR không được sửa các lượt đã có quyết định trong phiên bản này. Chưa có phân quyền chi tiết theo phòng ban/từng hồ sơ.
-
-## Khởi động ngoài demo
-
-```bash
-npm run build
-DATA_DIR=/duong-dan-rieng/du-lieu-noi-bo npm run create-user
-DATA_DIR=/duong-dan-rieng/du-lieu-noi-bo DEMO_MODE=0 npm start
-```
-
-Trước lệnh `create-user`, cấp qua biến môi trường bảo mật: `USER_NAME`, `USER_EMAIL`, `USER_PASSWORD` (tối thiểu 12 ký tự), tùy chọn `USER_ROLE=admin|hr|boss`. Script không in mật khẩu. Không đặt mật khẩu vào lệnh đã lưu trong repository hoặc gửi trong chat. `.env.example` chỉ là tài liệu; ứng dụng không tự đọc `.env`.
-
-`npm start` dùng cổng `PORT` (mặc định 3000) và bind `HOST` (mặc định 127.0.0.1). Dùng reverse proxy HTTPS đã cấu hình đúng, `NODE_ENV=production`, `APP_ORIGIN` là origin HTTPS chính xác và `DEMO_MODE=0`. `NODE_ENV=production` bật cookie Secure; không bật nó nếu đang kiểm tra bằng HTTP nội bộ. Entry point từ chối demo khi `NODE_ENV=production`; API ngoài demo cũng không chấp nhận phiên tài khoản demo. Tách `DATA_DIR` demo khỏi dữ liệu thật.
-
-## Phạm vi cần hoàn thiện trước vận hành thực
-
-Đây là bản phát triển cho các luồng tiếp nhận, chưa phải bản triển khai production. Chưa có PostgreSQL, S3 private storage, quét virus tự động, worker/outbox, email/nhắc lịch, đánh giá nhiều người, phê duyệt của Boss, offer, AI OCR/dịch Việt–Trung, SSO/khôi phục mật khẩu, phân quyền theo hồ sơ, chính sách lưu trữ/xóa dữ liệu hay backup/restore vận hành. Thông báo xử lý dữ liệu trong biểu mẫu được ghi rõ là bản phát triển và cần được Super Net hoàn thiện trước khi dùng dữ liệu thật.
-
-Không gửi dữ liệu ứng viên sang dịch vụ AI hay dịch thuật ở phiên bản này. Không có API key nào được yêu cầu hoặc lưu trong mã nguồn.
+Phân quyền nội bộ và quy trình hẹn phỏng vấn đã triển khai. AI đọc/dịch CV, email/SMS tự động, đồng bộ lịch ngoài, phê duyệt offer/tuyển dụng cuối cùng, PostgreSQL/S3, quét virus tự động, SSO, quyền theo phòng ban/từng hồ sơ, chính sách xóa dữ liệu và backup tự động chưa tích hợp. Hệ thống không tự quyết định tuyển dụng hay gửi CV sang AI. Hướng dẫn Windows/macOS hỗ trợ cấu hình đa nền tảng nhưng chưa được kiểm chứng trên máy Windows/macOS thật.

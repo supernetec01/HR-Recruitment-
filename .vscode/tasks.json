@@ -8,7 +8,7 @@
       "problemMatcher": []
     },
     {
-      "label": "Super Net: Chạy demo",
+      "label": "Super Net: Chạy nội bộ",
       "type": "npm",
       "script": "dev",
       "isBackground": true,

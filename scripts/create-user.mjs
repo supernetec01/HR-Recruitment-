@@ -1,10 +1,14 @@
 import { resolve } from 'node:path';
-import { openDatabase, id, passwordHash, normalizeEmail } from '../server/db.mjs';
-const { USER_NAME, USER_EMAIL, USER_PASSWORD, USER_ROLE = 'admin' } = process.env;
-if (!USER_NAME || !USER_EMAIL || !USER_PASSWORD || USER_PASSWORD.length < 12 || !['admin','hr','boss'].includes(USER_ROLE) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(USER_EMAIL)) {
-  console.error('Set USER_NAME, USER_EMAIL, USER_PASSWORD (at least 12 characters), and optionally USER_ROLE=admin|hr|boss in the process environment. Never commit credentials.');
+import { openDatabase, transaction } from '../server/db.mjs';
+import { createAccount } from '../server/accounts.mjs';
+const { USER_NAME, USER_LOGIN, USER_EMAIL = '', USER_PASSWORD, USER_ROLE = 'hr' } = process.env;
+if (!USER_NAME || !USER_LOGIN || !USER_PASSWORD) {
+  console.error('Set USER_NAME, USER_LOGIN, USER_PASSWORD (12+ characters), optional USER_EMAIL and USER_ROLE=admin|hr|boss. Prefer creating users in the Admin interface. Never commit credentials.');
   process.exit(1);
 }
-const db = openDatabase(resolve(process.env.DATA_DIR || '.data'));
-db.prepare('INSERT INTO users(id,name,email,role,password_hash) VALUES(?,?,?,?,?)').run(id(), USER_NAME, normalizeEmail(USER_EMAIL), USER_ROLE, passwordHash(USER_PASSWORD));
-db.close(); console.log('User created.');
+const db = openDatabase(resolve(process.env.DATA_DIR || '.data/internal'));
+try {
+  transaction(db, () => createAccount(db, { username: USER_LOGIN, name: USER_NAME, email: USER_EMAIL, password: USER_PASSWORD, role: USER_ROLE }));
+  console.log('User created.');
+} catch (error) { console.error(error.message); process.exitCode = 1; }
+finally { db.close(); }

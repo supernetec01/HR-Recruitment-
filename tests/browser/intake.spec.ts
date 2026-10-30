@@ -3,7 +3,7 @@ const pdf = { name: 'CV-cap-nhat.pdf', mimeType: 'application/pdf', buffer: Buff
 
 test('HR creates an incomplete record, detects duplicate, links CV, and preserves the original', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror',err => errors.push(err.message));
-  await page.goto('/');
+  await page.goto('/?page=candidates');
   await page.getByRole('button',{name:'Thêm ứng viên',exact:true}).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Họ và tên',{exact:true}).fill('Nguyễn E2E Minh');
@@ -50,7 +50,7 @@ test('applicant applies publicly; duplicate enters review and HR links it withou
 });
 
 test('single-use update link supplements the existing record without an account', async ({ page, context }) => {
-  await page.goto('/');
+  await page.goto('/?page=candidates');
   await page.getByRole('button',{name:'Mở hồ sơ Trần Hoàng Nam',exact:true}).click();
   await page.getByRole('button',{name:'Mời bổ sung hồ sơ'}).click();
   await page.getByRole('button',{name:'Tạo liên kết',exact:true}).click();
@@ -74,7 +74,7 @@ test('single-use update link supplements the existing record without an account'
 });
 
 test('filters, pagination, assignment and demo read-only Boss work through the UI', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?page=candidates');
   await page.getByLabel('Tìm kiếm ứng viên').fill('nguyen minh anh');
   await expect(page.locator('tbody tr')).toHaveCount(1);
   await page.getByRole('button',{name:'Xóa tìm kiếm'}).click();
@@ -99,7 +99,7 @@ test('filters, pagination, assignment and demo read-only Boss work through the U
 test('mobile navigation and intake form fit the viewport with no JavaScript errors', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror',error => errors.push(error.message));
   await page.setViewportSize({width:390,height:844});
-  await page.goto('/');
+  await page.goto('/?page=candidates');
   await expect(page.getByRole('heading',{name:'Quản lý ứng viên',exact:true})).toBeVisible();
   await expect(page.locator('.sidebar')).toHaveCSS('transform','matrix(1, 0, 0, 1, -231, 0)');
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
