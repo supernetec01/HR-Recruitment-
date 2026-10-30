@@ -6,9 +6,9 @@ import { Alert, Empty, Field, Modal } from './ui';
 import type { Job } from './types';
 
 export const JOB_BRANDS = [
-  { id: 'safestraps', name: 'Safestraps', category: 'Phụ kiện xe', Icon: CarFront },
-  { id: 'jielien', name: 'JieLien', category: 'Thiết bị âm thanh', Icon: Headphones },
-  { id: 'baby-tatto', name: 'Baby tatto', category: 'Mẹ và Bé', Icon: Baby },
+  { id: 'safestraps', name: 'Safestraps', category: 'Phụ kiện xe', Icon: CarFront, storeUrl: 'https://shopee.vn/safestraps?entryPoint=ShopBySearch&searchKeyword=safestraps' },
+  { id: 'jielien', name: 'JieLien', category: 'Loa & thiết bị âm thanh', Icon: Headphones, storeUrl: 'https://vn.shp.ee/2ZrUpPRj' },
+  { id: 'baby-tatto', name: 'Baby tatto', category: 'Mẹ và Bé', Icon: Baby, storeUrl: 'https://shopee.vn/babytattoo?categoryId=100632&entryPoint=ShopByPDP&itemId=20716712617' },
 ] as const;
 export const EMPLOYMENT_TYPES = ['Toàn thời gian','Bán thời gian','Thực tập','Cộng tác viên','Hợp đồng'];
 export const jobPath = (id: string) => `/tuyen-dung/${encodeURIComponent(id)}`;

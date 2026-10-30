@@ -11,8 +11,13 @@
 .business-heading { margin-bottom: 17px; }
 .business-heading > .eyebrow { font-size: calc(8px * var(--text-scale)); color: #7399ae; }
 .business-heading h2 { margin-top: 7px; font-size: calc(19px * var(--text-scale)); font-weight: 600; color: #2a5b74; }
+.business-heading > p { max-width: 720px; margin-top: 10px; color: #607f94; font-size: calc(11px * var(--text-scale)); line-height: 1.8; }
 .business-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; }
-.business-card { display: flex; align-items: center; gap: 16px; padding: 23px; border: 1px solid #dfebf2; border-radius: 10px; background: #fbfdff; }
+.business-card { display: flex; flex-direction: column; justify-content: space-between; gap: 22px; min-width: 0; padding: 23px; border: 1px solid #dfebf2; border-radius: 10px; background: #fbfdff; transition: border-color .16s, background .16s, box-shadow .16s; }
+.business-card:hover, .business-card:focus-visible { border-color: #149cd0; background: #f2faff; box-shadow: 0 5px 18px #03496912; }
+.business-card-heading { display: flex; align-items: center; gap: 16px; }
+.business-card-heading > div { min-width: 0; }
+.business-store-link { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 15px; border-top: 1px solid #dfebf2; color: #087da7; font-size: calc(11px * var(--text-scale)); font-weight: 600; line-height: 1.7; }
 .business-icon { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 53px; height: 53px; border-radius: 12px; color: #1279a0; background: #e6f3fa; }
 .business-card p { font-size: calc(10px * var(--text-scale)); color: #7b94a5; margin-bottom: 5px; }
 .business-card h3 { font-size: calc(20px * var(--text-scale)); font-weight: 650; color: #24536d; letter-spacing: -.025em; }
@@ -110,6 +115,7 @@
 .jd-card-status > button { white-space: nowrap; font-size: calc(9px * var(--text-scale)); }
 @media(max-width:1000px) {
   .business-card { padding: 19px 15px; gap: 12px; }
+  .business-card-heading { gap: 12px; }
   .business-icon { width: 42px; height: 43px; }
   .business-card h3 { font-size: calc(17px * var(--text-scale)); }
   .public-jd-layout { grid-template-columns: minmax(0,1.5fr) minmax(0,1fr); gap: 18px; }
