@@ -12,6 +12,7 @@ import { registerInternalRoutes } from './internal.mjs';
 import { protectOrigins } from './origin.mjs';
 import { hasAdministrator } from './accounts.mjs';
 import { registerJobRoutes, openJobCondition, todayInVietnam } from './jobs.mjs';
+import { scanBuffer, scannerStatus } from './antivirus.mjs';
 
 const text = (max = 200) => z.string().trim().max(max).default('');
 const emailValue = z.string().trim().max(254).pipe(z.union([z.literal(''), z.email()]));
@@ -40,7 +41,7 @@ const patchSchema = z.object({
 });
 const fail = (status, message, extra = {}) => { const error = new Error(message); error.status = status; Object.assign(error, extra); throw error; };
 
-export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.data/internal'), appOrigin = process.env.APP_ORIGIN, trustProxy = process.env.TRUST_PROXY || 'loopback', production = process.env.NODE_ENV === 'production' } = {}) {
+export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.data/internal'), appOrigin = process.env.APP_ORIGIN, trustProxy = process.env.TRUST_PROXY || 'loopback', production = process.env.NODE_ENV === 'production', scanFile = scanBuffer } = {}) {
   const db = openDatabase(dataDir, demo);
   const app = express();
   app.disable('x-powered-by');
@@ -55,14 +56,24 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
   app.use('/api/v1/public', limiter);
   app.use('/api/v1/login', limiter);
   const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024, files: 1, fields: 24, fieldSize: 10000 } }).single('file');
-  const stagedFiles = (req, res, next) => upload(req, res, error => error ? next(error) : next());
+  const stagedFiles = (req, res, next) => upload(req, res, async error => {
+    if (error) return next(error);
+    try {
+      if (req.file) {
+        validateFile(req.file);
+        req.file.scanResult = await scanFile(req.file.buffer, { filename: req.file.originalname });
+        if (req.file.scanResult?.status !== 'clean' || req.file.scanResult.checksum !== hash(req.file.buffer)) fail(503, 'Tệp chưa có kết quả quét hợp lệ. Vui lòng thử lại.');
+      }
+      next();
+    } catch (error) { next(error); }
+  });
 
   function getCandidate(cid) {
     const c = db.prepare(`SELECT c.*, u.name AS owner_name, creator.name AS creator_name FROM candidates c
       LEFT JOIN users u ON u.id=c.owner_id JOIN users creator ON creator.id=c.created_by WHERE c.id=?`).get(cid);
     if (!c) fail(404, 'Không tìm thấy hồ sơ.');
     const applications = db.prepare(`SELECT a.*, j.title AS job_title, j.department FROM applications a JOIN jobs j ON j.id=a.job_id WHERE a.candidate_id=? ORDER BY a.created_at DESC`).all(cid);
-    const documents = db.prepare('SELECT id,original_name,mime_type,size,version,kind,review_status,created_at,created_by FROM documents WHERE candidate_id=? ORDER BY created_at DESC,version DESC').all(cid);
+    const documents = db.prepare('SELECT id,original_name,mime_type,size,version,kind,review_status,scan_result,created_at,created_by FROM documents WHERE candidate_id=? ORDER BY created_at DESC,version DESC').all(cid).map(d => ({ ...d, scan: d.scan_result ? JSON.parse(d.scan_result) : null, scan_result: undefined }));
     return { ...c, tags: JSON.parse(c.tags), applications, documents, ...completeness(c, applications, documents) };
   }
   function staff(req, res, next) {
@@ -88,26 +99,29 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
       if (!decodedName.includes('\uFFFD')) file.originalname = decodedName.normalize('NFC');
       file.nameDecoded = true;
     }
+    if (!file.size) fail(400, 'Tệp đang trống. Vui lòng chọn lại CV.');
+    file.originalname = Array.from(file.originalname.replace(/[\r\n/\\\x00-\x1f\x7f]/g, '_')).slice(0, 200).join('') || 'CV';
     const ext = file.originalname.toLowerCase().split('.').pop();
     const headerOffset = file.buffer.subarray(0, 1024).indexOf(Buffer.from('%PDF-'));
     // Some PDF exporters prepend whitespace or a UTF-8 BOM. Preserve the original bytes/xref offsets.
-    const pdf = ext === 'pdf' && headerOffset >= 0 && /^(?:\uFEFF)?[\t\n\f\r ]*$/.test(file.buffer.subarray(0, headerOffset).toString('utf8'));
+    const pdf = headerOffset >= 0 && /^(?:\uFEFF)?[\t\n\f\r ]*$/.test(file.buffer.subarray(0, headerOffset).toString('utf8'));
     const docx = ext === 'docx' && file.buffer.subarray(0, 4).equals(Buffer.from([0x50,0x4b,0x03,0x04])) && file.buffer.includes(Buffer.from('[Content_Types].xml')) && file.buffer.includes(Buffer.from('word/document.xml'));
-    if (!pdf && !docx) fail(400, 'Chỉ nhận file PDF hoặc DOCX hợp lệ, tối đa 10 MB.');
-    if (pdf && /\/(JavaScript|JS|Launch|EmbeddedFile)\b/.test(file.buffer.toString('latin1'))) fail(400, 'PDF chứa nội dung chủ động không được hỗ trợ.');
-    file.safeMime = pdf ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    const hex = file.buffer.subarray(0, 12).toString('hex');
+    const image = hex.startsWith('89504e470d0a1a0a') ? 'image/png' : hex.startsWith('ffd8ff') ? 'image/jpeg' : /^474946383[79]61/.test(hex) ? 'image/gif' : file.buffer.subarray(0, 4).toString() === 'RIFF' && file.buffer.subarray(8, 12).toString() === 'WEBP' ? 'image/webp' : '';
+    file.safeMime = pdf ? 'application/pdf' : docx ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : image || (ext === 'txt' && !file.buffer.includes(0) ? 'text/plain' : 'application/octet-stream');
   }
   function saveFile(file, candidateId, submissionId, actorId) {
     if (!file) return;
     validateFile(file);
+    if (file.scanResult?.status !== 'clean' || file.scanResult.checksum !== hash(file.buffer)) fail(503, 'Tệp chưa vượt qua kiểm tra mã độc. Tệp chưa được lưu.');
     const docId = id(), stored = `${docId}.bin`;
     const version = candidateId ? db.prepare('SELECT COALESCE(MAX(version),0)+1 AS n FROM documents WHERE candidate_id=?').get(candidateId).n : 1;
     writeFileSync(resolve(dataDir, 'documents', stored), file.buffer, { mode: 0o600, flag: 'wx' });
     try {
-      db.prepare(`INSERT INTO documents(id,candidate_id,submission_id,original_name,stored_name,mime_type,size,checksum,version,created_at,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?)`)
-        .run(docId, candidateId, submissionId, file.originalname.replace(/[\r\n/\\\x00-\x1f]/g, '_').slice(0, 200), stored, file.safeMime, file.size, hash(file.buffer), version, now(), actorId);
+      db.prepare(`INSERT INTO documents(id,candidate_id,submission_id,original_name,stored_name,mime_type,size,checksum,version,created_at,created_by,scan_result) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`)
+        .run(docId, candidateId, submissionId, file.originalname, stored, file.safeMime, file.size, hash(file.buffer), version, now(), actorId, JSON.stringify(file.scanResult));
     } catch (error) { unlinkSync(resolve(dataDir, 'documents', stored)); throw error; }
-    if (candidateId) audit(db, candidateId, actorId, 'document.uploaded', { documentId: docId, name: file.originalname, version, reviewStatus: 'quarantined' });
+    if (candidateId) audit(db, candidateId, actorId, 'document.uploaded', { documentId: docId, name: file.originalname, version, scan: file.scanResult });
   }
   function assertJob(jobId) { if (jobId && !db.prepare(`SELECT id FROM jobs WHERE id=? AND ${openJobCondition}`).get(jobId, todayInVietnam())) fail(400, 'Vị trí không tồn tại, đã ngừng tuyển hoặc đã hết hạn nhận hồ sơ.'); }
   function assertOwner(ownerId) { if (ownerId && !db.prepare("SELECT id FROM users WHERE id=? AND role IN ('hr','admin') AND id!='public' AND active=1 AND is_demo=?").get(ownerId, demo ? 1 : 0)) fail(400, 'Người phụ trách không hợp lệ hoặc đã bị khóa.'); }
@@ -157,6 +171,7 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
   }
 
   app.get('/api/v1/health', (req, res) => { db.prepare('SELECT 1').get(); res.json({ status: 'ok', demo }); });
+  app.get('/api/v1/scanner-status', staff, async (req, res) => res.json(await scannerStatus()));
   app.get('/api/v1/config', (req, res) => res.json({ demo, needsSetup: !demo && !hasAdministrator(db), policyVersion: 'recruitment-v1' }));
   app.post('/api/v1/demo-session', (req, res) => {
     if (!demo) return res.sendStatus(404);
@@ -258,7 +273,8 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
     const doc = db.prepare('SELECT * FROM documents WHERE id=?').get(req.params.id);
     if (!doc) fail(404, 'Không tìm thấy tài liệu.');
     // Use an ASCII fallback plus the UTF-8 name so proxies/browsers handle Vietnamese filenames.
-    const disposition = `${preview ? 'inline' : 'attachment'}; filename="CV.${doc.mime_type === 'application/pdf' ? 'pdf' : 'docx'}"; filename*=UTF-8''${encodeURIComponent(doc.original_name).replace(/['()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`)}`;
+    const inline = preview && ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/png', 'image/jpeg', 'image/gif', 'image/webp', 'text/plain'].includes(doc.mime_type);
+    const disposition = `${inline ? 'inline' : 'attachment'}; filename="CV"; filename*=UTF-8''${encodeURIComponent(doc.original_name).replace(/['()*]/g, character => `%${character.charCodeAt(0).toString(16).toUpperCase()}`)}`;
     res.type(doc.mime_type).set('Content-Disposition', disposition);
     // Resolve only the generated storage name under documents. Absolute paths through .data
     // are otherwise treated as dotfiles by sendFile and incorrectly return 404.
@@ -317,7 +333,7 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
   app.get('/api/v1/submissions', staff, (req, res) => {
     res.json(db.prepare("SELECT * FROM submissions WHERE status='pending' ORDER BY created_at DESC").all().map(s => {
       const payload = JSON.parse(s.payload);
-      return { ...s, payload, matches: duplicateMatches(db, payload), documents: db.prepare('SELECT id,original_name,size,mime_type,version,review_status,created_at,kind FROM documents WHERE submission_id=?').all(s.id) };
+      return { ...s, payload, matches: duplicateMatches(db, payload), documents: db.prepare('SELECT id,original_name,size,mime_type,version,review_status,scan_result,created_at,kind FROM documents WHERE submission_id=?').all(s.id).map(d => ({ ...d, scan: d.scan_result ? JSON.parse(d.scan_result) : null, scan_result: undefined })) };
     }));
   });
   app.post('/api/v1/submissions/:id/resolve', staff, editor, (req, res) => {
@@ -347,7 +363,7 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
   });
   app.post('/api/v1/public/applications', stagedFiles, (req, res) => {
     const parsed = publicSchema.parse(req.body);
-    if (!req.file) fail(400, 'Vui lòng đính kèm CV (PDF hoặc DOCX).'); validateFile(req.file); assertJob(parsed.jobId);
+    if (!req.file) fail(400, 'Vui lòng đính kèm CV.'); validateFile(req.file); assertJob(parsed.jobId);
     idempotent(req, res, 'public-application', () => {
       const data = { ...parsed, email: normalizeEmail(parsed.email), phone: normalizePhone(parsed.phone), source: 'Website', receivedAt: now(), consentStatus: 'granted', consentEvidence: 'Ứng viên xác nhận chính sách recruitment-v1 trên website.' };
       const matches = duplicateMatches(db, data);

@@ -128,3 +128,35 @@ test('staff can view and download a public duplicate CV from the pending list be
   await dialog.getByRole('button', { name: 'Đóng', exact: true }).click();
   await expect(row.getByRole('button', { name: 'Kiểm tra & xác nhận' })).toBeVisible();
 });
+
+test('an applicant can upload a bilingual PDF with embedded Content Credentials after antivirus scanning', async ({ page }) => {
+  const job = await admin.post('/api/v1/jobs', { data: { title: 'CV song ngữ', department: 'QA', location: 'HCM', description: 'Kiểm thử CV có metadata Content Credentials.', openings: 1 } });
+  expect(job.status()).toBe(201);
+  const jobId = (await job.json()).id, applicantEmail = `c2pa-${crypto.randomUUID()}@example.com`;
+  const filename = '01_會計履歷_中越雙語_CV_kiểm_thử.pdf';
+  await page.goto(`${baseURL}/ung-tuyen/${jobId}`);
+  await page.locator('.public-form').getByLabel(/^Họ và tên/).fill('Ứng viên CV song ngữ');
+  await page.getByLabel('Email', { exact: true }).fill(applicantEmail);
+  await page.getByLabel('Tải CV', { exact: true }).setInputFiles({ name: filename, mimeType: 'application/pdf', buffer: readFileSync('tests/fixtures/cv-content-credentials.pdf') });
+  await page.getByRole('checkbox').check();
+  await page.getByRole('button', { name: 'Gửi hồ sơ ứng tuyển' }).click();
+  await expect(page.getByRole('heading', { name: 'Cảm ơn bạn đã kết nối!' })).toBeVisible();
+  const received = (await (await admin.get('/api/v1/candidates')).json()).find((c: { email: string }) => c.email === applicantEmail);
+  expect(received.documents[0].original_name).toBe(filename);
+  expect(received.documents[0].scan.status).toBe('clean');
+});
+
+test('arbitrary CV formats can upload, show a preview explanation, and download their original bytes', async ({ page }) => {
+  const filename = 'CV-ứng-viên.rtf', bytes = Buffer.from('{\\rtf1\\ansi Synthetic CV document}');
+  const created = await admin.post('/api/v1/candidates', { headers: { 'Idempotency-Key': crypto.randomUUID() }, multipart: { fullName: 'CV định dạng khác', source: 'Email', file: { name: filename, mimeType: 'application/rtf', buffer: bytes } } });
+  expect(created.status()).toBe(200);
+  const candidate = (await created.json()).candidate;
+  await login(page); await page.goto(`${baseURL}/?page=candidates&candidate=${candidate.id}`);
+  await page.getByRole('button', { name: 'CV & tài liệu (1)', exact: true }).click();
+  await page.getByRole('button', { name: 'Xem CV', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toContainText('Định dạng này chưa hỗ trợ xem trực tiếp');
+  const downloaded = page.waitForEvent('download'); await dialog.getByRole('button', { name: 'Tải CV', exact: true }).click();
+  const result = await downloaded; expect(result.suggestedFilename()).toBe(filename);
+  expect(readFileSync((await result.path())!)).toEqual(bytes);
+});

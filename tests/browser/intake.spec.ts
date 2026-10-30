@@ -17,14 +17,14 @@ test('HR creates an incomplete record, detects duplicate, links CV, and preserve
   await page.getByRole('button',{name:'Upload CV',exact:true}).click();
   await dialog.getByLabel('Họ và tên',{exact:true}).fill('Không được ghi đè');
   await dialog.getByLabel('Số điện thoại',{exact:true}).fill('+84 909 990 011');
-  await dialog.getByLabel('Tải CV (PDF hoặc DOCX)').setInputFiles(pdf);
+  await dialog.getByLabel('Tải CV').setInputFiles(pdf);
   await dialog.getByRole('button',{name:'Lưu hồ sơ',exact:true}).click();
   await expect(dialog.getByText('Có thể ứng viên đã có hồ sơ')).toBeVisible();
   await dialog.getByRole('button',{name:'Xác nhận & liên kết'}).click();
   await expect(page.getByRole('heading',{name:'Nguyễn E2E Minh',exact:true})).toBeVisible();
   await page.getByRole('button',{name:'CV & tài liệu (1)',exact:true}).click();
   await expect(page.getByText('CV-cap-nhat.pdf',{exact:true})).toBeVisible();
-  await expect(page.getByText('Đã nhận CV',{exact:true})).toBeVisible();
+  await expect(page.getByText(/^Đã quét mã độc · /)).toBeVisible();
   expect(errors).toEqual([]);
 });
 
@@ -34,7 +34,7 @@ test('applicant applies publicly; duplicate enters review and HR links it withou
   await page.locator('.public-jd-heading').getByRole('link',{name:'Ứng tuyển ngay',exact:true}).click();
   await page.getByLabel(/^Họ và tên/).fill('Minh Anh nộp lại');
   await page.getByLabel('Email',{exact:true}).fill('minhanh.nguyen@example.com');
-  await page.getByLabel('Tải CV (PDF hoặc DOCX)').setInputFiles(pdf);
+  await page.getByLabel('Tải CV').setInputFiles(pdf);
   await page.getByRole('checkbox').check();
   await page.getByRole('button',{name:'Gửi hồ sơ ứng tuyển'}).click();
   await expect(page.getByRole('heading',{name:'Cảm ơn bạn đã kết nối!'})).toBeVisible();
@@ -61,7 +61,7 @@ test('single-use update link supplements the existing record without an account'
   const applicant = await publicContext.newPage();
   await applicant.goto(link);
   await applicant.getByLabel('Portfolio',{exact:true}).fill('https://example.com/portfolio-updated');
-  await applicant.getByLabel('Tải CV (PDF hoặc DOCX)').setInputFiles({...pdf,name:'CV-version-3.pdf'});
+  await applicant.getByLabel('Tải CV').setInputFiles({...pdf,name:'CV-version-3.pdf'});
   await applicant.getByRole('checkbox').check();
   await applicant.getByRole('button',{name:'Gửi thông tin bổ sung'}).click();
   await expect(applicant.getByRole('heading',{name:'Đã cập nhật, cảm ơn bạn!'})).toBeVisible();

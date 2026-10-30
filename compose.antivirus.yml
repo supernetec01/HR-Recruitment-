@@ -1,0 +1,27 @@
+services:
+  antivirus:
+    image: clamav/clamav@sha256:bda39705e291105049c3936e2803ac90b955172af8030f94f05dce1252df6c6d
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3310:3310"
+    environment:
+      TZ: "UTC"
+      CLAMD_CONF_AlertEncrypted: "yes"
+      CLAMD_CONF_AlertExceedsMax: "yes"
+      CLAMD_CONF_StreamMaxLength: "11M"
+      CLAMD_CONF_MaxScanSize: "100M"
+      CLAMD_CONF_MaxFileSize: "25M"
+      CLAMD_CONF_MaxRecursion: "16"
+      CLAMD_CONF_MaxFiles: "1000"
+      CLAMD_CONF_MaxScanTime: "20000"
+      FRESHCLAM_CHECKS: "12"
+    volumes:
+      - antivirus-signatures:/var/lib/clamav
+    healthcheck:
+      test: ["CMD", "clamdscan", "--ping", "1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 120s
+volumes:
+  antivirus-signatures:

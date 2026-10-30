@@ -72,10 +72,10 @@ GET công khai chỉ trả danh sách trường JD cho phép, không trả user,
 | Vị trí | `GET/POST /api/v1/jobs`, `PATCH /api/v1/jobs/:id` |
 | Lịch | `GET/POST /api/v1/interviews`, `PATCH /api/v1/interviews/:id` |
 
-Form upload dùng `multipart/form-data`, một trường file tên `file`, PDF/DOCX tối đa 10 MB. Những API ghi nội bộ cần cookie phiên cùng `X-Requested-With: SuperNet`. API công khai không yêu cầu đăng nhập. Payload kiểm tra bằng Zod; SQL dùng tham số; tên tệp không được dùng làm đường dẫn lưu.
+Form upload dùng `multipart/form-data`, một trường file tên `file`, nhận mọi định dạng tối đa 10 MB. Middleware quét Microsoft Defender/ClamAV trước transaction; lỗi engine/chữ ký cũ/không quét hết không được coi là đạt. `documents.scan_result` lưu engine, phiên bản chữ ký, thời điểm và checksum của bytes gốc. PDF có metadata C2PA/EmbeddedFile không còn bị từ chối chỉ vì từ khóa. Xem `docs/antivirus.md`. Những API ghi nội bộ cần cookie phiên cùng `X-Requested-With: SuperNet`. API công khai không yêu cầu đăng nhập. Payload kiểm tra bằng Zod; SQL dùng tham số; tên tệp không được dùng làm đường dẫn lưu.
 
 ## Chuyển sang kiến trúc dài hạn
 
-Giữ mô hình candidate/application/document khi chuyển sang PostgreSQL và private object storage. Sau đó bổ sung AV worker/quarantine tự động, outbox cho thông báo, đánh giá độc lập theo người phỏng vấn, phê duyệt Boss có lý do và quyền theo resource. Chỉ nối AI OCR/dịch sau khi có chính sách dữ liệu, provider và kiểm thử chất lượng; luôn lưu extraction/translation tách khỏi CV gốc và yêu cầu HR kiểm tra.
+Giữ mô hình candidate/application/document khi chuyển sang PostgreSQL và private object storage. Sau đó có thể chuyển quét AV sang worker cách ly, bổ sung outbox cho thông báo, đánh giá độc lập theo người phỏng vấn, phê duyệt Boss có lý do và quyền theo resource. Chỉ nối AI OCR/dịch sau khi có chính sách dữ liệu, provider và kiểm thử chất lượng; luôn lưu extraction/translation tách khỏi CV gốc và yêu cầu HR kiểm tra.
 
 Việc xóa theo yêu cầu cá nhân phải xử lý cả file, nội dung nhập, submissions, audit chứa PII, idempotency response, bản dịch và backup theo chính sách hợp lệ. Phiên bản hiện tại chưa có quy trình xóa/retention hoàn chỉnh và chưa tuyên bố tuân thủ pháp luật cho vận hành thật.

@@ -83,11 +83,12 @@ test('idempotent HR upload replays once; changing the payload with the same key 
   const changed = await request(`/candidates/${candidateId}/documents`,{method:'POST',idem,form:form({},'CV-new.pdf',Buffer.concat([pdf,Buffer.from('\nchanged')]))});
   assert.equal(changed.status,409);
 });
-test('invalid, active-content, and oversized files are rejected before persistence', async () => {
+test('malware and oversized files are rejected before persistence', async () => {
   const count = db.prepare('SELECT COUNT(*) AS n FROM candidates').get().n;
-  for (const [name,bytes] of [['CV.exe',pdf],['CV.pdf',Buffer.from('not a pdf')],['CV.pdf',Buffer.from('%PDF-1.4 /JavaScript (test)')],['CV.docx',Buffer.from('PK-not-a-document')],['large.pdf',Buffer.alloc(10 * 1024 * 1024 + 1)]]) {
+  const eicar = Buffer.from(['X5O!P%@AP[4', '\\PZX54(P^)7CC)7}$', 'EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*'].join(''));
+  for (const [name,bytes,status] of [['CV.pdf',eicar,422],['large.pdf',Buffer.alloc(10 * 1024 * 1024 + 1),400]]) {
     const result = await request('/candidates',{method:'POST',idem:randomUUID(),form:form({fullName:'Bad upload',source:'Email'},name,bytes)});
-    assert.equal(result.status,400,`${name} must be rejected`);
+    assert.equal(result.status,status,`${name} must be rejected`);
   }
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM candidates').get().n,count);
 });

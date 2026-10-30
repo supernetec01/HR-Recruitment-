@@ -77,7 +77,7 @@ test('HR publishes a structured JD; an anonymous applicant reads it and submits 
   await applicant.locator('.public-jd-heading').getByRole('link',{name:'Ứng tuyển ngay',exact:true}).click();
   await applicant.getByLabel(/^Họ và tên/).fill('Ứng viên từ JD công khai');
   await applicant.getByLabel('Email',{exact:true}).fill('jd-applicant@example.com');
-  await applicant.getByLabel('Tải CV (PDF hoặc DOCX)').setInputFiles({name:'CV-JD.pdf',mimeType:'application/pdf',buffer:readFileSync('tests/fixtures/cv.pdf')});
+  await applicant.getByLabel('Tải CV').setInputFiles({name:'CV-JD.pdf',mimeType:'application/pdf',buffer:readFileSync('tests/fixtures/cv.pdf')});
   await applicant.getByRole('checkbox').check();
   await applicant.getByRole('button',{name:'Gửi hồ sơ ứng tuyển'}).click();
   await expect(applicant.getByRole('heading',{name:'Cảm ơn bạn đã kết nối!'})).toBeVisible();

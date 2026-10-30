@@ -113,7 +113,7 @@ test('Recording a phone call does not override withdrawn consent or missing cont
     assert.equal(db.prepare('SELECT COUNT(*) AS n FROM interviews WHERE application_id=?').get(profile.applications[0].id).n,0);
   }
 });
-test('PDFs with initial whitespace or a BOM upload unchanged; HTML prefixes and active content stay rejected', async () => {
+test('PDFs preserve their original bytes; other content is scanned and stored as a download-only file', async () => {
   for (const prefix of [Buffer.from('\n'),Buffer.from('\r\n  \t'),Buffer.from([0xef,0xbb,0xbf,0x0a])]) {
     const buffer = Buffer.concat([prefix,pdf]), profile = await candidate({file:buffer});
     const document = db.prepare('SELECT * FROM documents WHERE id=?').get(profile.documents[0].id);
@@ -122,8 +122,10 @@ test('PDFs with initial whitespace or a BOM upload unchanged; HTML prefixes and 
     assert.equal(document.review_status,'quarantined'); assert.equal(document.mime_type,'application/pdf');
   }
   for (const buffer of [Buffer.concat([Buffer.from('<html>'),pdf]),Buffer.from('\n%PDF-1.4\n/JavaScript (bad)\n%%EOF'),Buffer.concat([Buffer.alloc(1024,32),pdf])]) {
-    const form = new FormData();form.set('fullName','Rejected file');form.set('source','Email');form.set('file',new Blob([buffer],{type:'application/pdf'}),'CV.pdf');
-    assert.equal((await request('/candidates',{session:hr,method:'POST',form,idem:randomUUID()})).status,400);
+    const form = new FormData();form.set('fullName','Scanned file');form.set('source','Email');form.set('file',new Blob([buffer],{type:'application/pdf'}),'CV.pdf');
+    const result = await request('/candidates',{session:hr,method:'POST',form,idem:randomUUID()});
+    assert.equal(result.status,200);
+    assert.equal(result.body.candidate.documents[0].scan.status,'clean');
   }
 });
 test('Full JD employer and application contacts persist, are public, and survive partial editing', async () => {

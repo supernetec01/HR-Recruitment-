@@ -7,7 +7,7 @@ export type Job = {
   company_name?: string; application_instructions?: string; application_email?: string; application_email_subject?: string; application_zalo?: string;
 };
 export type Application = { id: string; job_id: string; job_title: string; department: string; stage: string; source: string; received_at: string; created_at: string };
-export type Document = { id: string; original_name: string; size: number; version: number; mime_type: string; review_status: string; created_at: string; kind: string };
+export type Document = { id: string; original_name: string; size: number; version: number; mime_type: string; review_status: string; created_at: string; kind: string; scan?: { status: 'clean'; engine: string; version: string; signatureDate: string; scannedAt: string; checksum: string } | null };
 export type Candidate = {
   id: string; full_name: string; email: string; phone: string; location: string; source: string;
   created_by: string; creator_name: string; received_at: string; created_at: string; updated_at: string;

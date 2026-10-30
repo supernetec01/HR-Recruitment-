@@ -28,27 +28,32 @@ function CVPreview({ document, onClose, onDownload, downloading, downloadError }
 }) {
   const [url, setUrl] = useState(''), [text, setText] = useState(''), [error, setError] = useState(''), [loaded, setLoaded] = useState(false);
   const pdf = document.mime_type === 'application/pdf';
+  const docx = document.mime_type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  const image = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'].includes(document.mime_type);
+  const plainText = document.mime_type === 'text/plain';
+  const supported = pdf || docx || image || plainText;
   useEffect(() => {
     const controller = new AbortController(); let active = true, objectUrl = '';
     (async () => {
       try {
+        if (!supported) return;
         const blob = await fetchFile(document, 'preview', controller.signal);
-        if (pdf) {
+        if (pdf || image) {
           if (!active) return;
           objectUrl = URL.createObjectURL(blob); setUrl(objectUrl);
-        } else {
+        } else if (docx) {
           // Extract text locally; never render uploaded HTML or send a CV to an external viewer.
           const { default: mammoth } = await import('mammoth');
           const result = await mammoth.extractRawText({ arrayBuffer: await blob.arrayBuffer() });
           if (active) setText(result.value.trim());
-        }
+        } else if (active) setText((await blob.text()).slice(0, 500000));
       } catch (err) { if (active) setError(errorMessage(err)); }
       finally { if (active) setLoaded(true); }
     })();
     return () => { active = false; controller.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
-  }, [document.id, pdf]);
+  }, [document.id, pdf, docx, image, supported]);
   return createPortal(<Modal title="Xem CV" subtitle={`${document.original_name} · Phiên bản ${document.version}`} onClose={onClose} wide>
-    {!loaded ? <Spinner label="Đang tải CV…"/> : error ? <div className="modal-body"><Alert>{error}</Alert></div> : pdf ? <div className="pdf-preview"><iframe title={`CV ${document.original_name}`} src={url}/></div> : <div className="modal-body docx-preview"><p className="helper">Nội dung văn bản của CV DOCX. Tải bản gốc để xem đầy đủ bố cục và hình ảnh.</p>{text ? <pre>{text}</pre> : <Alert>CV không có văn bản có thể trích xuất. Hãy tải bản gốc để xem nội dung.</Alert>}</div>}
+    {!loaded ? <Spinner label="Đang tải CV…"/> : error ? <div className="modal-body"><Alert>{error}</Alert></div> : !supported ? <div className="modal-body"><p>Đã lưu bản gốc. Định dạng này chưa hỗ trợ xem trực tiếp; chọn Tải CV để mở bằng phần mềm phù hợp.</p></div> : pdf ? <div className="pdf-preview"><iframe title={`CV ${document.original_name}`} src={url}/></div> : image ? <div className="modal-body image-preview"><img src={url} alt={`CV ${document.original_name}`}/></div> : <div className="modal-body docx-preview"><p className="helper">{docx ? 'Nội dung văn bản của CV DOCX. Tải bản gốc để xem đầy đủ bố cục và hình ảnh.' : 'Xem tối đa 500.000 ký tự. Tải bản gốc để xem toàn bộ nội dung.'}</p>{text ? <pre>{text}</pre> : <Alert>CV không có văn bản có thể trích xuất. Hãy tải bản gốc để xem nội dung.</Alert>}</div>}
     {downloadError && <div className="modal-body"><Alert>{downloadError}</Alert></div>}
     <footer className="modal-foot"><span>CV gốc được lưu trong hồ sơ · Chỉ nhân sự đã đăng nhập được truy cập</span><button type="button" className="button secondary" disabled={downloading} onClick={onDownload}><Download size={16}/>{downloading ? 'Đang tải…' : 'Tải CV'}</button></footer>
   </Modal>, window.document.body);

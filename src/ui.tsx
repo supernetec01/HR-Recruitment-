@@ -50,14 +50,14 @@ export function FileInput({ file, onChange, required = false }: { file: File | n
   const ref = useRef<HTMLInputElement>(null);
   const [invalid, setInvalid] = useState('');
   const select = (value: File | null) => {
-    const message = value && (value.size > 10 * 1024 * 1024 || !/\.(pdf|docx)$/i.test(value.name)) ? 'Chỉ nhận PDF hoặc DOCX, tối đa 10 MB.' : '';
+    const message = value && (value.size > 10 * 1024 * 1024 || value.size === 0) ? 'Chọn tệp không rỗng, tối đa 10 MB.' : '';
     setInvalid(message);
-    if (!message) onChange(value);
+    onChange(message ? null : value);
   };
   return <div className="file-field"><label className={`file-drop ${file ? 'has-file' : ''}`} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); select(e.dataTransfer.files[0] || null); }}>
-    <input ref={ref} type="file" name="file" accept=".pdf,.docx" aria-label="Tải CV (PDF hoặc DOCX)" required={required && !file} onChange={e => select(e.target.files?.[0] || null)}/>
+    <input ref={ref} type="file" name="file" aria-label="Tải CV" required={required && !file} onChange={e => select(e.target.files?.[0] || null)}/>
     <span className="upload-icon">{file ? <FileText size={24}/> : <UploadCloud size={24}/>}</span><strong>{file ? file.name : 'Chọn tệp hoặc kéo thả CV vào đây'}</strong>
-    <span>{file ? `${(file.size / 1024).toFixed(0)} KB · Nhấn để thay tệp` : 'PDF, DOCX · Tối đa 10 MB · Giữ nguyên CV gốc'}</span>
+    <span>{file ? `${(file.size / 1024).toFixed(0)} KB · Nhấn để thay tệp` : 'Mọi định dạng · Tối đa 10 MB · Quét mã độc trước khi lưu'}</span>
   </label><span className="field-error" role="alert">{invalid}</span>{file && <button type="button" className="text-button" onClick={() => { onChange(null); if (ref.current) ref.current.value = ''; }}>Bỏ tệp đã chọn</button>}</div>;
 }
 export function Empty({ title, children, icon }: { title: string; children?: ReactNode; icon?: ReactNode }) { return <div className="empty"><div className="empty-icon">{icon || <FileText size={26}/>}</div><h3>{title}</h3><p>{children}</p></div>; }

@@ -94,6 +94,19 @@ test('DOCX preview and download preserve the original bytes and type', async () 
   }
 });
 
+test('clean arbitrary file types are retained byte-for-byte and unknown formats are download-only', async () => {
+  for (const [name, bytes] of [['CV.rtf', Buffer.from('{\\rtf1\\ansi Synthetic CV}')], ['CV.html', Buffer.from('<script>notExecuted()</script>')], ['CV', Buffer.from('CV without extension')]]) {
+    const doc = await upload(name, bytes);
+    const response = await file(doc, 'preview');
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('content-type'), 'application/octet-stream');
+    assert.match(response.headers.get('content-disposition'), /^attachment;/);
+    assert.deepEqual(Buffer.from(await response.arrayBuffer()), bytes);
+    const recorded = JSON.parse(instance.db.prepare('SELECT scan_result FROM documents WHERE id=?').get(doc.id).scan_result);
+    assert.equal(recorded.status, 'clean'); assert.equal(recorded.checksum, (await import('../server/db.mjs')).hash(bytes));
+  }
+});
+
 test('a duplicate submission CV is available to staff before identity resolution and stays private', async () => {
   const created = await upload();
   const candidateId = instance.db.prepare('SELECT candidate_id FROM documents WHERE id=?').get(created.id).candidate_id;

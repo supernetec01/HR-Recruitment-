@@ -11,10 +11,15 @@
     "build": "vite build",
     "start": "node server/index.mjs",
     "setup": "node scripts/setup.mjs",
+    "scanner:check": "node scripts/scanner-check.mjs",
+    "scanner:up": "docker compose -f compose.antivirus.yml up -d --wait && node scripts/scanner-check.mjs --clamav",
+    "scanner:down": "docker compose -f compose.antivirus.yml down",
     "demo": "node scripts/demo.mjs",
+    "pretest": "node scripts/scanner-check.mjs",
     "test": "node --test --test-concurrency=1 tests/*.test.mjs",
     "check": "tsc --noEmit",
     "create-user": "node scripts/create-user.mjs",
+    "pretest:e2e": "node scripts/scanner-check.mjs",
     "test:e2e": "npm run build && playwright test"
   },
   "dependencies": {
