@@ -4,6 +4,7 @@ export type Job = {
   openings: number; status?: string; application_count?: number; requirements?: string; benefits?: string;
   working_hours?: string; salary_range?: string; business_line?: string; application_deadline?: string;
   created_at?: string; updated_at?: string; revision?: number;
+  translation_available?: boolean; content_language?: string;
   company_name?: string; application_instructions?: string; application_email?: string; application_email_subject?: string; application_zalo?: string;
 };
 export type Application = { id: string; job_id: string; job_title: string; department: string; stage: string; source: string; received_at: string; created_at: string };

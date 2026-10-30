@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 
 const execute = promisify(execFile);
-const unavailable = () => Object.assign(new Error('Microsoft Defender chưa sẵn sàng để quét. Bật/cập nhật Defender và kiểm tra quyền chạy website, hoặc cấu hình ClamAV. Tệp chưa được lưu.'), { status: 503 });
+const unavailable = () => Object.assign(new Error('Microsoft Defender chưa sẵn sàng để quét. Bật/cập nhật Defender và kiểm tra quyền chạy website, hoặc cấu hình ClamAV. Tệp chưa được lưu.'), { status: 503, publicMessage: 'Microsoft Defender chưa sẵn sàng để quét. Bật/cập nhật Defender và kiểm tra quyền chạy website, hoặc cấu hình ClamAV. Tệp chưa được lưu.' });
 async function defender(path = '', maxAgeDays = 7) {
   try {
     const powershell = join(process.env.SystemRoot || 'C:\\Windows', 'System32/WindowsPowerShell/v1.0/powershell.exe');

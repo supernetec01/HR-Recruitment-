@@ -27,7 +27,7 @@ Xem [hướng dẫn VS Code và sử dụng](docs/vscode.md), [thiết kế dữ
 | Chức năng | Admin | Sếp | Người phỏng vấn | HR |
 | --- | --- | --- | --- | --- |
 | Tạo user, đổi quyền, khóa/mở, đặt lại mật khẩu | Có | — | — | — |
-| Xem hồ sơ, xem/tải CV, dashboard/báo cáo | Có | Có | Có | Có |
+| Xem hồ sơ, xem trước CV PDF/DOCX, dịch CV, dashboard/báo cáo | Có | Có | Có | Có |
 | Tiếp nhận/sửa hồ sơ, upload CV, xác minh trùng | Có | — | — | Có |
 | Chọn CV, yêu cầu Hẹn phỏng vấn, đề xuất người phỏng vấn | Có | Có | Có | — |
 | Nhận yêu cầu, liên hệ, tạo/đổi/hủy lịch | Có | — | — | Có |
@@ -41,7 +41,7 @@ Chỉ Admin thấy **Thành viên & phân quyền**, danh sách tài khoản và
 ## Quy trình sử dụng
 
 1. **Admin:** Thành viên & phân quyền → Tạo tài khoản. Điền họ tên, tên đăng nhập, vai trò, mật khẩu từ 12 ký tự; email không bắt buộc. Có thể cấp vai trò Người phỏng vấn, Sếp hoặc HR. Admin/HR vào Vị trí tuyển dụng → Tạo JD tuyển dụng để đăng tin.
-2. **HR:** Thêm ứng viên / Upload CV từ Facebook, email, Zalo… Có thể lưu thiếu thông tin; giữ nguồn và ngày nhận thực tế. Mọi định dạng tối đa 10 MB/tệp, quét mã độc trước khi lưu bản gốc theo phiên bản. Windows ưu tiên Microsoft Defender; có thể thay bằng ClamAV. Xem [cấu hình bộ quét](docs/antivirus.md). Nhân sự đã đăng nhập có thể **Xem CV** hoặc **Tải xuống** ngay sau khi tiếp nhận, kể cả CV cũ chưa ghi nhận kiểm tra. PDF xem trực tiếp; DOCX hiển thị nội dung văn bản trong trình duyệt, tải bản gốc để giữ đầy đủ bố cục/hình ảnh. Kết quả quét tự động gắn với đúng checksum của tệp; Ghi nhận kiểm tra thủ công vẫn là tùy chọn, không chặn quyền đọc/tải. Nếu bộ quét không sẵn sàng, hệ thống không nhận tệp mới chưa kiểm tra.
+2. **HR:** Thêm ứng viên / Upload CV từ Facebook, email, Zalo… Có thể lưu thiếu thông tin; giữ nguồn và ngày nhận thực tế. Mọi định dạng tối đa 10 MB/tệp, quét mã độc trước khi lưu bản gốc theo phiên bản. Windows ưu tiên Microsoft Defender; có thể thay bằng ClamAV. Xem [cấu hình bộ quét](docs/antivirus.md). Nhân sự đã đăng nhập có thể **Xem CV** hoặc **Tải xuống** ngay sau khi tiếp nhận, kể cả CV cũ chưa ghi nhận kiểm tra. PDF xem bằng trình xem có chuyển trang/phóng to; DOCX hiển thị nội dung văn bản trong trình duyệt, tải bản gốc để giữ đầy đủ bố cục/hình ảnh. Kết quả quét tự động gắn với đúng checksum của tệp; Ghi nhận kiểm tra thủ công vẫn là tùy chọn, không chặn quyền đọc/tải. Nếu bộ quét không sẵn sàng, hệ thống không nhận tệp mới chưa kiểm tra.
 3. **Sếp/Người phỏng vấn:** Mở hồ sơ → Hẹn phỏng vấn, chọn vị trí, phiên bản CV, Người phỏng vấn đề xuất và ghi chú. CV mới nhận cũng được gắn vào yêu cầu; có thể xem/tải trong mục CV & tài liệu mà không cần đánh dấu kiểm tra trước. Đây là lựa chọn ứng viên cho vòng phỏng vấn, chưa phải quyết định tuyển dụng cuối cùng.
 4. **HR:** Nhận yêu cầu trên dashboard/Yêu cầu phỏng vấn. Liên hệ ứng viên rồi chọn Liên hệ & xếp lịch: ngày, giờ bắt đầu, thời lượng 15–240 phút, người phỏng vấn và địa điểm. Người được đề xuất được chọn sẵn, HR có thể điều chỉnh. Nếu hồ sơ chưa xác nhận dữ liệu, nhập Nội dung đã trao đổi và đánh dấu Đã liên hệ ứng viên và thống nhất việc hẹn phỏng vấn. Việc này lưu riêng, không tự đổi consent sang đã đồng ý. Hồ sơ đã rút lại sự đồng ý cần ghi nhận sự đồng ý mới trước khi xếp lịch. Giờ kết thúc tự tính; kiểm tra trùng cả ứng viên lẫn người phỏng vấn.
 5. **Dashboard:** Bảng theo ngày, khung giờ, số phút, ứng viên, vị trí và người phỏng vấn, theo UTC+7. Đổi lịch cần lý do; hủy lịch đưa yêu cầu về chờ HR; hoàn thành chỉ sau giờ bắt đầu. Nhật ký giữ người và nội dung thay đổi. Tự cập nhật mỗi 30 giây hoặc khi trở lại tab; có nút cập nhật thủ công.
@@ -61,6 +61,34 @@ Mỗi vị trí có **Chỉnh sửa JD**, **Xem JD**, chia sẻ liên kết và 
 Chỉ tin đang tuyển và còn hạn được công khai; ngày hết hạn tính đến hết ngày theo UTC+7. Tin quá hạn/tạm dừng bị ẩn cả ở danh sách và đường dẫn trực tiếp, ngừng nhận lượt ứng tuyển mới. Hồ sơ/lịch phỏng vấn đã có vẫn được giữ. Để tuyển lại tin hết hạn, chỉnh hạn nhận hồ sơ hoặc để trống rồi mở lại. Chỉnh sửa có kiểm tra phiên bản để tránh ghi đè cập nhật của người khác, đồng thời lưu người sửa, thời điểm và nội dung thay đổi.
 
 Database cũ tự bổ sung các trường JD khi khởi động; giữ ID vị trí, mô tả cũ và các lượt ứng tuyển. Không cần tạo lại vị trí hay chạy setup lại. Link dùng IP `192.168.1.5` chỉ truy cập được trong mạng tương ứng; để ứng viên ngoài công ty truy cập, cần triển khai qua domain/địa chỉ công khai phù hợp.
+
+## Xem CV và giao diện Việt–Trung
+
+Mở hồ sơ → **CV & tài liệu → Xem CV**. Các định dạng khác giữ bản gốc và có thể tải xuống; ảnh/TXT có chế độ xem riêng. PDF được vẽ bằng PDF.js trên canvas, có chuyển trang/phóng to/thu nhỏ, dùng được trên desktop và điện thoại; không phụ thuộc plugin PDF/iframe của trình duyệt. DOCX được đọc dưới dạng văn bản, giữ xuống dòng; hình ảnh và bố cục Word không được tái dựng. Tệp gốc, phiên bản và trạng thái kiểm tra không bị thay đổi khi xem. Chỉ phiên nhân sự đã đăng nhập mới được truy cập CV. Font, CMap và bộ giải mã PDF được phục vụ từ website.
+
+Chọn **Tiếng Việt / 简体中文** trên màn hình đăng nhập, thanh công cụ hoặc trang tuyển dụng. Lựa chọn được giữ trong trình duyệt. Giao diện tiếng Trung giản thể sử dụng bộ nhãn và font đi kèm, hoạt động cả khi chưa bật API. Giá trị lưu trong biểu mẫu, danh tính và tài liệu gốc được giữ nguyên.
+
+Ảnh dùng dữ liệu kiểm thử: [Trình xem CV](docs/screenshots/cv-viewer.png), [JD tiếng Trung trên điện thoại](docs/screenshots/chinese-jd-mobile.png), [Quản lý API trong Admin](docs/screenshots/admin-api-settings.png).
+
+## Bật API dịch CV/JD bằng OpenAI
+
+Admin mở **Thành viên & phân quyền → Dịch thuật Việt–Trung** để nhập/thay khóa API, kiểm tra kết nối và xem lịch nhắc. Cần khóa từ tài khoản OpenAI API của công ty, có quyền dùng model và hạn mức sử dụng; gói ChatGPT không tự cấp hạn mức API.
+
+1. Nhập khóa vào **Khóa API OpenAI mới**. Giữ model `gpt-4.1-mini` hoặc chọn model hỗ trợ JSON và PDF/ảnh nếu cần OCR.
+2. Chọn **Nhắc cập nhật sau (ngày)**, mặc định **30**, rồi **Lưu cấu hình API**. Khóa được mã hóa AES-256-GCM trong thư mục dữ liệu, không trả lại qua API; ô nhập được xóa sau khi lưu. Bỏ trống ô khóa để giữ khóa hiện tại khi chỉnh model/lịch nhắc.
+3. Chọn **Kiểm tra kết nối API**. Hệ thống gửi một câu mẫu ngắn, ghi nhận kết quả và thời điểm kiểm tra, không gửi CV trong bước này.
+4. Có thể thay khóa **bất kỳ lúc nào**, không cần chờ 30 ngày và không cần khởi động lại. Khóa mới áp dụng cho lần dịch kế tiếp. Ngày nhắc chỉ là lịch quản lý, không làm khóa tự hết hạn hoặc tự ngừng dịch.
+
+Khóa chỉ dùng trên backend; nhân sự khác không được xem/sửa/kiểm tra cấu hình API. Chỉ trạng thái cấu hình được hiển thị, không hiển thị lại khóa hoặc phần đuôi khóa. GitHub không đồng bộ khóa API tới máy khác: sau khi cập nhật trên máy chủ công ty, Admin nhập khóa một lần tại đây. Khi sao lưu/khôi phục, giữ **toàn bộ** thư mục dữ liệu để có cả cấu hình mã hóa và khóa bảo vệ; thư mục này cần được bảo vệ như dữ liệu CV. Vite chặn truy cập trực tiếp `.data/` qua HTTP.
+
+Nếu dùng cấu hình ngoài giao diện, vẫn có thể đặt `SUPERNET_TRANSLATION_API_KEY` hoặc `OPENAI_API_KEY`/`TRANSLATION_MODEL` trong môi trường, hoặc sao chép `.env.translation.example` thành `.env.translation` và điền trên máy chủ. Khóa đã lưu qua Admin được ưu tiên; tệp/env chỉ là nguồn dự phòng khi chưa có khóa Admin. Không đưa khóa vào `VITE_`, frontend hoặc GitHub. Thay cấu hình ngoài giao diện cần khởi động lại; thay qua Admin áp dụng ngay. Demo không sử dụng khóa API thật.
+
+Máy chủ cần kết nối được `https://api.openai.com`; HTTP_PROXY/HTTPS_PROXY/NO_PROXY được tôn trọng. **Đã lưu khóa API** chỉ cho biết đã lưu cấu hình; **Kiểm tra kết nối API** xác thực quyền truy cập/model. Nếu khóa hoặc hạn mức chưa hợp lệ, thao tác báo lỗi cụ thể để Admin thay khóa và kiểm tra lại.
+
+- **Dịch CV:** CV & tài liệu → **Dịch CV 中文** → chọn ngôn ngữ → **Dịch CV**. Nội dung được đọc cục bộ rồi gửi dịch theo thao tác của nhân sự; PDF không có lớp văn bản được gửi dưới dạng PDF cho model hỗ trợ ảnh/OCR. Lưu bản dịch theo ID CV, ngôn ngữ và checksum; lần mở sau dùng bản đã lưu. Có **Dịch lại CV** khi cần. Bản gốc không bị ghi đè. Hồ sơ đã rút lại đồng ý bị chặn gửi sang dịch vụ dịch.
+- **Dịch JD:** Admin/HR vào Vị trí tuyển dụng → **Dịch JD 中文 → Dịch & lưu bản tiếng Trung**. Trang tuyển dụng dùng bản này khi ứng viên chọn 简体中文. Bản gốc vẫn giữ riêng. Khi sửa JD gốc, bản dịch cũ không còn được công khai; dịch lại cho phiên bản mới. Chưa có bản dịch thì trang hiển thị nguyên văn cùng thông báo.
+
+API dùng OpenAI Responses với `store:false`; đây không phải cam kết về chính sách lưu giữ của nhà cung cấp. Thông báo ứng tuyển phiên bản `recruitment-v2` nêu mục đích dịch. Mỗi yêu cầu có giới hạn dung lượng, thời gian và tần suất; bản dịch được ghi người tạo/thời điểm/model. Việc đổi ngôn ngữ giao diện không tự gửi CV ra ngoài. Phiên phát triển này kiểm tra tích hợp bằng dịch vụ giả lập; chưa kiểm chứng dịch vụ OpenAI thật bằng khóa của công ty.
 
 ## Dữ liệu và vận hành
 
@@ -87,7 +115,6 @@ Trên Linux/macOS: `HOST=0.0.0.0 npm start`. PowerShell: đặt `$env:HOST="0.0.
 `npm run demo` mới bật dữ liệu minh họa và nút đổi vai trò, lưu trong `.data/`, tách khỏi `.data/internal/`. Không dùng CV thật trong demo. Không chạy demo/dev cùng lúc vì dùng chung cổng. API ngoài demo không nhận phiên demo hoặc cho đổi vai trò tự do.
 
 ```bash
-npm run scanner:check
 npm run check
 npm test
 npm run test:e2e
@@ -97,7 +124,7 @@ TypeScript kiểm tra frontend, cấu hình và test trình duyệt. Test API d�
 
 ## Phạm vi còn lại
 
-Phân quyền nội bộ và quy trình hẹn phỏng vấn đã triển khai. AI đọc/dịch CV, email/SMS tự động, đồng bộ lịch ngoài, phê duyệt offer/tuyển dụng cuối cùng, PostgreSQL/S3, SSO, quyền theo phòng ban/từng hồ sơ, chính sách xóa dữ liệu và backup tự động chưa tích hợp. Hệ thống không tự quyết định tuyển dụng hay gửi CV sang AI. Hướng dẫn Windows/macOS hỗ trợ cấu hình đa nền tảng nhưng chưa được kiểm chứng trên máy Windows/macOS thật.
+Phân quyền nội bộ, quy trình hẹn phỏng vấn, trình xem CV và tích hợp dịch OpenAI đã triển khai. Dịch thật cần cấu hình khóa API. Email/SMS tự động, đồng bộ lịch ngoài, phê duyệt offer/tuyển dụng cuối cùng, PostgreSQL/S3, SSO, quyền theo phòng ban/từng hồ sơ, chính sách xóa dữ liệu và backup tự động chưa tích hợp. Hệ thống không tự quyết định tuyển dụng. Hướng dẫn Windows/macOS hỗ trợ cấu hình đa nền tảng nhưng chưa được kiểm chứng trên máy Windows/macOS thật.
 
 ## Đăng nhập qua mạng LAN và proxy
 

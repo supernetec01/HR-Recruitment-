@@ -3,7 +3,7 @@ import { once } from 'node:events';
 import { createHash } from 'node:crypto';
 import { defenderStatus, scanWithDefender } from './defender.mjs';
 
-const problem = (status, message) => Object.assign(new Error(message), { status });
+const problem = (status, message) => Object.assign(new Error(message), { status, publicMessage: message });
 const unavailable = () => problem(503, 'Bộ quét mã độc chưa sẵn sàng. Tệp chưa được lưu; vui lòng thử lại sau hoặc liên hệ quản trị viên.');
 function useDefender(options) {
   const engine = process.env.CV_SCANNER || 'auto';

@@ -85,6 +85,17 @@ export function openDatabase(directory, demo = false) {
       status TEXT NOT NULL DEFAULT 'scheduled' CHECK(status IN ('scheduled','completed','cancelled')),
       created_by TEXT NOT NULL REFERENCES users(id), created_at TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS document_translations (
+      document_id TEXT NOT NULL REFERENCES documents(id), target_language TEXT NOT NULL,
+      source_checksum TEXT NOT NULL, text TEXT NOT NULL, model TEXT NOT NULL,
+      created_at TEXT NOT NULL, created_by TEXT NOT NULL REFERENCES users(id),
+      PRIMARY KEY(document_id,target_language,source_checksum)
+    );
+    CREATE TABLE IF NOT EXISTS job_translations (
+      job_id TEXT NOT NULL REFERENCES jobs(id), target_language TEXT NOT NULL, source_revision INTEGER NOT NULL,
+      content TEXT NOT NULL, model TEXT NOT NULL, created_at TEXT NOT NULL, created_by TEXT NOT NULL REFERENCES users(id),
+      PRIMARY KEY(job_id,target_language,source_revision)
+    );
   `);
   // Additive migrations preserve existing applicants, documents and staff accounts.
   if (!db.prepare('PRAGMA table_info(documents)').all().some(column => column.name === 'scan_result')) db.exec("ALTER TABLE documents ADD COLUMN scan_result TEXT NOT NULL DEFAULT ''");

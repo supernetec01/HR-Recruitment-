@@ -1,3 +1,4 @@
+import { t } from './locale';
 import { cloneElement, isValidElement, useEffect, useId, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { X, Check, LoaderCircle, FileText, UploadCloud, AlertCircle } from 'lucide-react';
 import { STAGES } from './api';
@@ -9,7 +10,7 @@ export function Avatar({ name, small = false, index = 0 }: { name: string; small
 }
 export function Stage({ stage }: { stage: string }) {
   const info = STAGES[stage] || STAGES.new;
-  return <span className={`stage ${info.color}`}><span />{info.label}</span>;
+  return <span className={`stage ${info.color}`}><span />{t(info.label)}</span>;
 }
 export function Modal({ title, subtitle, children, onClose, wide = false, className = '' }: { title: string; subtitle?: string; children: ReactNode; onClose: () => void; wide?: boolean; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -34,7 +35,7 @@ export function Modal({ title, subtitle, children, onClose, wide = false, classN
   }, []);
   return <div className="modal-backdrop" onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
     <div className={`modal ${wide ? 'wide' : ''} ${className}`} role="dialog" aria-modal="true" aria-labelledby="modal-title" tabIndex={-1} ref={ref}>
-      <header className="modal-head"><div><span className="eyebrow">SUPER NET RECRUITMENT</span><h2 id="modal-title">{title}</h2>{subtitle && <p>{subtitle}</p>}</div><button className="icon-button" aria-label="Đóng" onClick={onClose}><X size={20}/></button></header>
+      <header className="modal-head"><div><span className="eyebrow">{t("SUPER NET RECRUITMENT")}</span><h2 id="modal-title">{t(title)}</h2>{subtitle && <p>{t(subtitle)}</p>}</div><button className="icon-button" aria-label={t("Đóng")} onClick={onClose}><X size={20}/></button></header>
       {children}
     </div>
   </div>;
@@ -42,10 +43,10 @@ export function Modal({ title, subtitle, children, onClose, wide = false, classN
 export function Field({ label, children, hint, required = false, className = '' }: { label: string; children: ReactNode; hint?: string; required?: boolean; className?: string }) {
   const controlId = useId();
   const control = isValidElement(children) && typeof children.type === 'string' && ['input','select','textarea'].includes(children.type);
-  return <div className={`field ${className}`}>{control ? <label htmlFor={controlId}>{label}{required && <b className="required" aria-hidden="true"> *</b>}</label> : <span>{label}{required && <b className="required" aria-hidden="true"> *</b>}</span>}{control ? cloneElement(children as ReactElement<{ id?: string }>, { id: controlId }) : children}{hint && <small>{hint}</small>}</div>;
+  return <div className={`field ${className}`}>{control ? <label htmlFor={controlId}>{t(label)}{required && <b className="required" aria-hidden="true"> *</b>}</label> : <span>{t(label)}{required && <b className="required" aria-hidden="true"> *</b>}</span>}{control ? cloneElement(children as ReactElement<{ id?: string }>, { id: controlId }) : children}{hint && <small>{t(hint)}</small>}</div>;
 }
 export function Alert({ children, success = false }: { children: ReactNode; success?: boolean }) { return <div className={`alert ${success ? 'success' : ''}`} role={success ? 'status' : 'alert'}>{success ? <Check size={17}/> : <AlertCircle size={17}/>}<span>{children}</span></div>; }
-export function Spinner({ label = 'Đang tải dữ liệu…' }: { label?: string }) { return <div className="loading" role="status"><LoaderCircle size={24} className="spin"/>{label}</div>; }
+export function Spinner({ label = 'Đang tải dữ liệu…' }: { label?: string }) { return <div className="loading" role="status"><LoaderCircle size={24} className="spin"/>{t(label)}</div>; }
 export function FileInput({ file, onChange, required = false }: { file: File | null; onChange: (file: File | null) => void; required?: boolean }) {
   const ref = useRef<HTMLInputElement>(null);
   const [invalid, setInvalid] = useState('');
@@ -55,9 +56,9 @@ export function FileInput({ file, onChange, required = false }: { file: File | n
     onChange(message ? null : value);
   };
   return <div className="file-field"><label className={`file-drop ${file ? 'has-file' : ''}`} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); select(e.dataTransfer.files[0] || null); }}>
-    <input ref={ref} type="file" name="file" aria-label="Tải CV" required={required && !file} onChange={e => select(e.target.files?.[0] || null)}/>
-    <span className="upload-icon">{file ? <FileText size={24}/> : <UploadCloud size={24}/>}</span><strong>{file ? file.name : 'Chọn tệp hoặc kéo thả CV vào đây'}</strong>
-    <span>{file ? `${(file.size / 1024).toFixed(0)} KB · Nhấn để thay tệp` : 'Mọi định dạng · Tối đa 10 MB · Quét mã độc trước khi lưu'}</span>
-  </label><span className="field-error" role="alert">{invalid}</span>{file && <button type="button" className="text-button" onClick={() => { onChange(null); if (ref.current) ref.current.value = ''; }}>Bỏ tệp đã chọn</button>}</div>;
+    <input ref={ref} type="file" name="file" aria-label={t("Tải CV")} required={required && !file} onChange={e => select(e.target.files?.[0] || null)}/>
+    <span className="upload-icon">{file ? <FileText size={24}/> : <UploadCloud size={24}/>}</span><strong>{file ? file.name : t("Chọn tệp hoặc kéo thả CV vào đây")}</strong>
+    <span>{file ? t("{p0} KB · Nhấn để thay tệp",{p0:(file.size / 1024).toFixed(0)}) : t("Mọi định dạng · Tối đa 10 MB · Quét mã độc trước khi lưu")}</span>
+  </label><span className="field-error" role="alert">{t(invalid)}</span>{file && <button type="button" className="text-button" onClick={() => { onChange(null); if (ref.current) ref.current.value = ''; }}>{t("Bỏ tệp đã chọn")}</button>}</div>;
 }
-export function Empty({ title, children, icon }: { title: string; children?: ReactNode; icon?: ReactNode }) { return <div className="empty"><div className="empty-icon">{icon || <FileText size={26}/>}</div><h3>{title}</h3><p>{children}</p></div>; }
+export function Empty({ title, children, icon }: { title: string; children?: ReactNode; icon?: ReactNode }) { return <div className="empty"><div className="empty-icon">{icon || <FileText size={26}/>}</div><h3>{t(title)}</h3><p>{children}</p></div>; }

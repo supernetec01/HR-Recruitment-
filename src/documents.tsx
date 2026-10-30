@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
+import { t } from './locale';
 import { createPortal } from 'react-dom';
 import { Download, Eye, LoaderCircle } from 'lucide-react';
 import { ApiError, errorMessage } from './api';
 import { Alert, Modal, Spinner } from './ui';
 import type { Document } from './types';
+
+const DocumentViewer = lazy(() => import('./document-viewer'));
 
 type CV = Pick<Document, 'id' | 'original_name' | 'mime_type' | 'version'>;
 async function fetchFile(document: CV, action: 'preview' | 'download', signal?: AbortSignal) {
@@ -23,43 +26,38 @@ async function fetchFile(document: CV, action: 'preview' | 'download', signal?: 
   return response.blob();
 }
 
-function CVPreview({ document, onClose, onDownload, downloading, downloadError }: {
+function OtherPreview({ document, onClose, onDownload, downloading, downloadError }: {
   document: CV; onClose: () => void; onDownload: () => void; downloading: boolean; downloadError: string;
 }) {
   const [url, setUrl] = useState(''), [text, setText] = useState(''), [error, setError] = useState(''), [loaded, setLoaded] = useState(false);
-  const pdf = document.mime_type === 'application/pdf';
-  const docx = document.mime_type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
   const image = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'].includes(document.mime_type);
   const plainText = document.mime_type === 'text/plain';
-  const supported = pdf || docx || image || plainText;
+  const supported = image || plainText;
   useEffect(() => {
     const controller = new AbortController(); let active = true, objectUrl = '';
     (async () => {
       try {
         if (!supported) return;
         const blob = await fetchFile(document, 'preview', controller.signal);
-        if (pdf || image) {
+        if (image) {
           if (!active) return;
           objectUrl = URL.createObjectURL(blob); setUrl(objectUrl);
-        } else if (docx) {
-          // Extract text locally; never render uploaded HTML or send a CV to an external viewer.
-          const { default: mammoth } = await import('mammoth');
-          const result = await mammoth.extractRawText({ arrayBuffer: await blob.arrayBuffer() });
-          if (active) setText(result.value.trim());
         } else if (active) setText((await blob.text()).slice(0, 500000));
       } catch (err) { if (active) setError(errorMessage(err)); }
       finally { if (active) setLoaded(true); }
     })();
     return () => { active = false; controller.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
-  }, [document.id, pdf, docx, image, supported]);
-  return createPortal(<Modal title="Xem CV" subtitle={`${document.original_name} · Phiên bản ${document.version}`} onClose={onClose} wide>
-    {!loaded ? <Spinner label="Đang tải CV…"/> : error ? <div className="modal-body"><Alert>{error}</Alert></div> : !supported ? <div className="modal-body"><p>Đã lưu bản gốc. Định dạng này chưa hỗ trợ xem trực tiếp; chọn Tải CV để mở bằng phần mềm phù hợp.</p></div> : pdf ? <div className="pdf-preview"><iframe title={`CV ${document.original_name}`} src={url}/></div> : image ? <div className="modal-body image-preview"><img src={url} alt={`CV ${document.original_name}`}/></div> : <div className="modal-body docx-preview"><p className="helper">{docx ? 'Nội dung văn bản của CV DOCX. Tải bản gốc để xem đầy đủ bố cục và hình ảnh.' : 'Xem tối đa 500.000 ký tự. Tải bản gốc để xem toàn bộ nội dung.'}</p>{text ? <pre>{text}</pre> : <Alert>CV không có văn bản có thể trích xuất. Hãy tải bản gốc để xem nội dung.</Alert>}</div>}
-    {downloadError && <div className="modal-body"><Alert>{downloadError}</Alert></div>}
-    <footer className="modal-foot"><span>CV gốc được lưu trong hồ sơ · Chỉ nhân sự đã đăng nhập được truy cập</span><button type="button" className="button secondary" disabled={downloading} onClick={onDownload}><Download size={16}/>{downloading ? 'Đang tải…' : 'Tải CV'}</button></footer>
+  }, [document.id, image, supported]);
+  return createPortal(<Modal title={t("Xem CV")} subtitle={`${document.original_name} · ${t("Phiên bản ")}${document.version}`} onClose={onClose} wide>
+    {!loaded ? <Spinner label={t("Đang tải CV…")}/> : error ? <div className="modal-body"><Alert>{t(error)}</Alert></div> : !supported ? <div className="modal-body"><p>{t('Đã lưu bản gốc. Định dạng này chưa hỗ trợ xem trực tiếp; chọn Tải CV để mở bằng phần mềm phù hợp.')}</p></div> : image ? <div className="modal-body image-preview"><img src={url} alt={`CV ${document.original_name}`}/></div> : <div className="modal-body docx-preview"><p className="helper">{t('Xem tối đa 500.000 ký tự. Tải bản gốc để xem toàn bộ nội dung.')}</p>{text ? <pre>{text}</pre> : <Alert>{t('CV không có văn bản có thể trích xuất. Hãy tải bản gốc để xem nội dung.')}</Alert>}</div>}
+    {downloadError && <div className="modal-body"><Alert>{t(downloadError)}</Alert></div>}
+    <footer className="modal-foot"><span>{t('CV gốc được lưu trong hồ sơ · Chỉ nhân sự đã đăng nhập được truy cập')}</span><button type="button" className="button secondary" disabled={downloading} onClick={onDownload}><Download size={16}/>{downloading ? t('Đang tải…') : t('Tải CV')}</button></footer>
   </Modal>, window.document.body);
 }
 
-export function DocumentActions({ document }: { document: CV }) {
+export function DocumentActions({ document, candidateName, allowTranslation = true }: { document: CV; candidateName?: string; allowTranslation?: boolean }) {
+  const rich = ['application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(document.mime_type);
+  const [initialView,setInitialView] = useState<'original' | 'translation'>('original');
   const [preview, setPreview] = useState(false), [downloading, setDownloading] = useState(false), [error, setError] = useState('');
   async function download() {
     if (downloading) return;
@@ -75,9 +73,10 @@ export function DocumentActions({ document }: { document: CV }) {
     finally { setDownloading(false); }
   }
   return <div className="document-actions"><div className="hero-actions">
-    <button type="button" className="button secondary small-button" onClick={() => { setError(''); setPreview(true); }}><Eye size={15}/>Xem CV</button>
-    <button type="button" className="button secondary small-button" aria-label={`Tải ${document.original_name}`} disabled={downloading} onClick={() => void download()}>{downloading ? <LoaderCircle size={15} className="spin"/> : <Download size={15}/>}Tải xuống</button>
-  </div>{error && !preview && <Alert>{error}</Alert>}
-    {preview && <CVPreview document={document} onClose={() => setPreview(false)} onDownload={() => void download()} downloading={downloading} downloadError={error}/>}
+    <button type="button" className="button secondary small-button" onClick={() => { setError(''); setInitialView('original'); setPreview(true); }}><Eye size={15}/>{t("Xem CV")}</button>
+    <button type="button" className="button secondary small-button" aria-label={t("Tải {p0}",{p0:document.original_name})} disabled={downloading} onClick={() => void download()}>{downloading ? <LoaderCircle size={15} className="spin"/> : <Download size={15}/>}{t("Tải xuống")}</button>
+    {rich && allowTranslation && <button type="button" className="text-button" onClick={() => {setError('');setInitialView('translation');setPreview(true);}}>{t("Dịch CV 中文")}</button>}
+  </div>{error && !preview && <Alert>{t(error)}</Alert>}
+    {preview && (rich ? createPortal(<Suspense fallback={<div className="modal-backdrop"><Spinner/></div>}><DocumentViewer document={document} candidateName={candidateName} onClose={() => setPreview(false)} onDownload={() => void download()} downloading={downloading} downloadError={error} initialView={initialView} allowTranslation={allowTranslation}/></Suspense>,window.document.body) : <OtherPreview document={document} onClose={() => setPreview(false)} onDownload={() => void download()} downloading={downloading} downloadError={error}/>)}
   </div>;
 }

@@ -17,6 +17,7 @@ Trong VS Code → Terminal → New Terminal:
 ```bash
 node --version
 npm ci
+npm run scanner:check
 npm run dev
 ```
 
@@ -57,8 +58,8 @@ Với máy chủ hiện tại, mở `http://192.168.1.5:5173/tuyen-dung`. Địa
 
 1. Admin/HR đăng JD tại **Vị trí tuyển dụng → Tạo JD tuyển dụng**. Không gian mới không có dữ liệu giả.
 2. HR dùng **Quản lý ứng viên → Thêm ứng viên / Upload CV**. Nhập những gì đã có, chọn nguồn, ngày nhận thực tế và vị trí; có thể lưu thiếu thông tin.
-3. Tệp mới được quét mã độc trước khi lưu: Windows dùng Microsoft Defender, hoặc ClamAV được cấu hình theo [hướng dẫn](antivirus.md). Nhận mọi định dạng tối đa 10 MB. Nếu bộ quét lỗi, chưa nhận tệp mới. Vào **CV & tài liệu → Xem CV** hoặc **Tải xuống** ngay sau khi nhận hồ sơ. PDF xem trực tiếp; DOCX hiển thị nội dung văn bản, tải bản gốc để xem đầy đủ bố cục/hình ảnh. Có thể mở lại và tải mọi phiên bản đã lưu. **Ghi nhận kiểm tra** là thao tác tùy chọn, không bắt buộc để xem/tải.
-4. Sếp/Người phỏng vấn mở **Tổng quan** của hồ sơ → **Hẹn phỏng vấn**, chọn vị trí, phiên bản CV, **Người phỏng vấn đề xuất** và ghi chú gửi HR. Có thể gửi yêu cầu và xem/tải khi CV chưa được đánh dấu kiểm tra; quyền truy cập vẫn yêu cầu tài khoản nội bộ đang hoạt động. Danh sách CV không còn bị bỏ trống chỉ vì chưa kiểm tra.
+3. Mở **CV & tài liệu → Xem CV** để đọc ngay: PDF hỗ trợ chuyển trang/phóng to, DOCX xem nội dung văn bản. Không cần ghi nhận kiểm tra trước khi xem trong website. Có thể tải bản gốc ngay sau khi tiếp nhận; ghi nhận kiểm tra thủ công không chặn quyền đọc/tải. Tệp mới được quét mã độc trước khi lưu; xem [cấu hình bộ quét](antivirus.md).
+4. Sếp/Người phỏng vấn mở **Tổng quan** của hồ sơ → **Hẹn phỏng vấn**, chọn vị trí, phiên bản CV, **Người phỏng vấn đề xuất** và ghi chú gửi HR. Có thể gửi yêu cầu khi CV chưa được đánh dấu kiểm tra; thao tác này giữ nguyên tệp/trạng thái kiểm tra. Danh sách CV không bị bỏ trống chỉ vì chưa kiểm tra.
 5. Yêu cầu được lưu cùng người chọn, thời điểm, CV và hiển thị tại dashboard/**Yêu cầu phỏng vấn**. Đây chưa phải giờ hẹn đã xác nhận hoặc quyết định tuyển dụng.
 
 Ứng viên tự gửi qua `/tuyen-dung`. Hồ sơ nghi trùng vào Chờ xác minh để HR xác nhận; không tự ghi đè hồ sơ/CV cũ. Link bổ sung do HR tạo có hạn và dùng một lần, thêm đúng hồ sơ. Link có hostname localhost chỉ dùng trên máy đang chạy ứng dụng; khi dùng chung cần mở qua hostname/IP/domain máy chủ.
@@ -99,6 +100,7 @@ Khi cập nhật, dừng dịch vụ, lưu/commit công việc đang sửa rồi
 ```bash
 git pull --ff-only
 npm ci
+npm run scanner:check
 npm run dev
 ```
 
@@ -153,14 +155,26 @@ Các máy khác dùng hostname/IP máy chủ và cổng 3000, không dùng local
 | Đổi máy không còn tài khoản | Khôi phục database riêng hoặc setup mới; dữ liệu không đồng bộ qua Git. |
 | Cổng bị chiếm | Dừng phiên dev/demo/debug/test cũ trước khi chạy lại. |
 | Đăng nhập HTTP không giữ phiên | Không bật NODE_ENV=production khi thử HTTP trực tiếp. |
-| Không xem/tải được CV | Đăng nhập lại nếu hết phiên. Cập nhật bản mới để sửa lỗi đường dẫn `.data`; nếu báo thiếu tệp, khôi phục đúng thư mục documents từ bản sao lưu. Không xóa `.data/`. PDF xem trực tiếp, DOCX xem văn bản hoặc tải bản gốc. |
-| CV có Content Credentials/C2PA hoặc tệp định dạng khác bị từ chối | Cập nhật bản mới, chạy `npm run scanner:check`; hệ thống nhận tệp sau khi quét mã độc, không chặn chỉ vì từ khóa EmbeddedFile hoặc đuôi tệp. |
+| Không xem được CV | Cập nhật và khởi động lại; dùng Xem CV để mở trình xem PDF/DOCX. Không cần plugin PDF hoặc bước kiểm tra thủ công trước khi xem. |
+| CV PDF hợp lệ bị từ chối vì dòng trống đầu file | Đã hỗ trợ khoảng trắng/BOM trước header PDF; giữ nguyên tệp, chọn lại và tải lên sau khi cập nhật. |
 | Danh sách CV trong Hẹn phỏng vấn bị trống | Cập nhật bản mới; CV chờ kiểm tra cũng được chọn gửi yêu cầu. Hồ sơ chưa có CV cần bổ sung file. |
 | JD không hiện công khai | Kiểm tra trạng thái Đang tuyển, hạn nhận hồ sơ và bộ lọc ngành hàng. |
 | Không thấy nút tạo/sửa JD | Đăng nhập bằng Admin/HR; Sếp chỉ được xem. |
 | Không đặt được lịch | Kiểm tra email/điện thoại, ghi nhận trao đổi nếu chưa xác nhận dữ liệu, thời gian tương lai, cùng ngày, thời lượng và xung đột. |
 
-AI, email, phê duyệt offer, quét virus tự động và các giới hạn còn lại: xem [README](../README.md). Hướng dẫn Windows/macOS chưa được kiểm chứng trên máy Windows/macOS thật.
+API dịch cần cấu hình khóa OpenAI; email, phê duyệt offer và các giới hạn còn lại: xem [README](../README.md). Hướng dẫn Windows/macOS chưa được kiểm chứng trên máy Windows/macOS thật.
+
+## Tiếng Trung và dịch CV/JD
+
+Chọn **简体中文** ở bộ chọn ngôn ngữ trên trang đăng nhập/thanh công cụ/trang tuyển dụng. Giao diện và font Trung có sẵn; dữ liệu nhập vẫn lưu giá trị gốc. Chọn lại **Tiếng Việt** để trở về.
+
+Để bật dịch nội dung, Admin vào **Thành viên & phân quyền → Dịch thuật Việt–Trung**, nhập khóa mới, để lịch nhắc **30 ngày**, bấm **Lưu cấu hình API → Kiểm tra kết nối API**. Khóa mới dùng ngay, không cần sửa mã hoặc khởi động lại. Sau khi lưu, ô khóa trống; đây là cách giữ kín khóa đã lưu. Bỏ trống để giữ khóa cũ nếu chỉ thay model/lịch nhắc.
+
+Có thể thay khóa bất cứ lúc nào; lịch nhắc không tự làm khóa hết hạn. Sau khi `git pull` trên một máy chủ khác, vào Admin nhập khóa cho máy đó vì GitHub không mang theo khóa API. Dùng khóa mới nếu khóa cũ đã được chia sẻ vào chat. Chi tiết nguồn env dự phòng, model, kết nối và giới hạn: [README](../README.md#bật-api-dịch-cvjd-bằng-openai).
+
+- Hồ sơ → CV & tài liệu → **Dịch CV 中文 → Dịch CV**. Bản dịch hiển thị riêng, có thể chuyển lại tab CV gốc.
+- Vị trí tuyển dụng → **Dịch JD 中文 → Dịch & lưu bản tiếng Trung** (Admin/HR). Ứng viên chọn 简体中文 ở `/tuyen-dung` để đọc bản đã dịch.
+- Sau khi sửa JD gốc, cần tạo bản dịch của phiên bản mới. API dịch chưa bật thì CV gốc và giao diện song ngữ vẫn dùng được.
 
 ## Sửa lỗi đăng nhập tại địa chỉ LAN
 
@@ -169,6 +183,7 @@ Nếu đang dùng địa chỉ `http://192.168.1.5:5173`, cập nhật source r�
 ```bash
 git pull --ff-only
 npm ci
+npm run scanner:check
 npm run dev
 ```
 

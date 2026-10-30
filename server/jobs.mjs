@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { id, now, audit, transaction } from './db.mjs';
+import { publicJobTranslation } from './translations.mjs';
 
 export const todayInVietnam = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }).format(new Date());
 export const openJobCondition = "status='open' AND (application_deadline='' OR application_deadline>=?)";
@@ -69,10 +70,10 @@ export function registerJobRoutes(app, { db, staff, editor }) {
     });
     res.json({ ok: true, job: result });
   });
-  app.get('/api/v1/public/jobs', (req, res) => res.json(db.prepare(`SELECT ${publicFields} FROM jobs WHERE ${openJobCondition} ORDER BY created_at DESC,rowid DESC`).all(todayInVietnam())));
+  app.get('/api/v1/public/jobs', (req, res) => res.json(db.prepare(`SELECT ${publicFields},revision FROM jobs WHERE ${openJobCondition} ORDER BY created_at DESC,rowid DESC`).all(todayInVietnam()).map(job => publicJobTranslation(db,job,req.query.language))));
   app.get('/api/v1/public/jobs/:id', (req, res) => {
-    const job = db.prepare(`SELECT ${publicFields} FROM jobs WHERE id=? AND ${openJobCondition}`).get(req.params.id, todayInVietnam());
+    const job = db.prepare(`SELECT ${publicFields},revision FROM jobs WHERE id=? AND ${openJobCondition}`).get(req.params.id, todayInVietnam());
     if (!job) failure(404, 'Tin tuyển dụng không tồn tại, đã tạm dừng hoặc đã hết hạn nhận hồ sơ.');
-    res.json(job);
+    res.json(publicJobTranslation(db,job,req.query.language));
   });
 }

@@ -51,15 +51,15 @@ test('new PDF can be repeatedly viewed and downloaded through the real Vite prox
     await card.getByRole('button', { name: 'Xem CV', exact: true }).click();
     expect((await response).status()).toBe(200);
     const dialog = page.getByRole('dialog');
-    await expect(dialog.locator('iframe')).toHaveAttribute('src', /^blob:/);
-    const bytes = await dialog.locator('iframe').evaluate(async frame => Array.from(new Uint8Array(await (await fetch((frame as HTMLIFrameElement).src)).arrayBuffer())));
-    expect(Buffer.from(bytes)).toEqual(pdf);
+    await expect(dialog.getByTestId('cv-canvas')).toBeVisible();
+    await expect.poll(() => dialog.getByTestId('cv-canvas').evaluate(element => { const canvas = element as HTMLCanvasElement; return canvas.width > 0 && canvas.height > 0; })).toBe(true);
+    await expect(dialog.locator('iframe,object,embed')).toHaveCount(0);
     const downloaded = page.waitForEvent('download');
     await dialog.getByRole('button', { name: 'Tải CV', exact: true }).click();
     const download = await downloaded;
     expect(download.suggestedFilename()).toBe(pdfName);
     expect(readFileSync((await download.path())!)).toEqual(pdf);
-    await dialog.getByRole('button', { name: 'Đóng', exact: true }).click();
+    await dialog.getByLabel('Đóng', { exact: true }).click();
   }
   const directDownload = page.waitForEvent('download');
   await card.getByRole('button', { name: `Tải ${pdfName}`, exact: true }).click();
@@ -75,8 +75,8 @@ test('DOCX is readable as local text on a phone and original download preserves 
   const card = page.locator('.document-card').filter({ hasText: docxName });
   await card.getByRole('button', { name: 'Xem CV', exact: true }).click();
   const dialog = page.getByRole('dialog');
-  await expect(dialog.locator('.docx-preview pre')).toContainText('CV Nguyễn Thị Ánh — Kiểm thử DOCX');
-  await expect(dialog.locator('.docx-preview pre')).toContainText('<script>window.cvScriptExecuted = true</script>');
+  await expect(dialog.locator('.cv-text p')).toContainText('CV Nguyễn Thị Ánh — Kiểm thử DOCX');
+  await expect(dialog.locator('.cv-text p')).toContainText('<script>window.cvScriptExecuted = true</script>');
   expect(await page.evaluate(() => 'cvScriptExecuted' in window)).toBe(false);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
   expect(await page.locator('.modal-backdrop').boundingBox()).toMatchObject({ x: 0, y: 0, width: 390, height: 844 });
@@ -121,11 +121,12 @@ test('staff can view and download a public duplicate CV from the pending list be
   const row = page.locator('.submission-row').filter({ hasText: pendingName });
   await row.getByRole('button', { name: 'Xem CV', exact: true }).click();
   const dialog = page.getByRole('dialog');
-  await expect(dialog.locator('iframe')).toHaveAttribute('src', /^blob:/);
+  await expect(dialog.getByTestId('cv-canvas')).toBeVisible();
+    await expect.poll(() => dialog.getByTestId('cv-canvas').evaluate(element => { const canvas = element as HTMLCanvasElement; return canvas.width > 0 && canvas.height > 0; })).toBe(true);
   const downloaded = page.waitForEvent('download');
   await dialog.getByRole('button', { name: 'Tải CV', exact: true }).click();
   expect(readFileSync((await (await downloaded).path())!)).toEqual(pdf);
-  await dialog.getByRole('button', { name: 'Đóng', exact: true }).click();
+  await dialog.getByLabel('Đóng', { exact: true }).click();
   await expect(row.getByRole('button', { name: 'Kiểm tra & xác nhận' })).toBeVisible();
 });
 

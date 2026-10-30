@@ -13,6 +13,8 @@ import { protectOrigins } from './origin.mjs';
 import { hasAdministrator } from './accounts.mjs';
 import { registerJobRoutes, openJobCondition, todayInVietnam } from './jobs.mjs';
 import { scanBuffer, scannerStatus } from './antivirus.mjs';
+import { registerDocumentPreview } from './documents.mjs';
+import { registerTranslations } from './translations.mjs';
 
 const text = (max = 200) => z.string().trim().max(max).default('');
 const emailValue = z.string().trim().max(254).pipe(z.union([z.literal(''), z.email()]));
@@ -41,20 +43,21 @@ const patchSchema = z.object({
 });
 const fail = (status, message, extra = {}) => { const error = new Error(message); error.status = status; Object.assign(error, extra); throw error; };
 
-export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.data/internal'), appOrigin = process.env.APP_ORIGIN, trustProxy = process.env.TRUST_PROXY || 'loopback', production = process.env.NODE_ENV === 'production', scanFile = scanBuffer } = {}) {
+export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.data/internal'), appOrigin = process.env.APP_ORIGIN, trustProxy = process.env.TRUST_PROXY || 'loopback', production = process.env.NODE_ENV === 'production', scanFile = scanBuffer, translationService, translationSettingsStore, translationFetch, loginLimit = 30 } = {}) {
   const db = openDatabase(dataDir, demo);
   const app = express();
   app.disable('x-powered-by');
   app.use(helmet({ contentSecurityPolicy: { directives: {
-    defaultSrc: ["'self'"], scriptSrc: ["'self'"], styleSrc: ["'self'", "'unsafe-inline'"],
+    defaultSrc: ["'self'"], scriptSrc: ["'self'", "'wasm-unsafe-eval'"], workerSrc: ["'self'",'blob:'], styleSrc: ["'self'", "'unsafe-inline'"],
     imgSrc: ["'self'", 'data:', 'blob:'], fontSrc: ["'self'"], connectSrc: ["'self'"], frameSrc: ["'self'", 'blob:'], objectSrc: ["'none'"], upgradeInsecureRequests: null,
   } }, crossOriginEmbedderPolicy: false, strictTransportSecurity: production ? undefined : false }));
   app.use(express.json({ limit: '128kb' }));
   app.use('/api', (req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
   protectOrigins(app, { appOrigin, trustProxy, production });
   const limiter = rateLimit({ windowMs: 15 * 60000, limit: demo ? 300 : 30, standardHeaders: 'draft-8', legacyHeaders: false, message: { message: 'Bạn thao tác quá nhanh. Vui lòng thử lại sau.' } });
-  app.use('/api/v1/public', limiter);
-  app.use('/api/v1/login', limiter);
+  const publicReadLimiter = rateLimit({windowMs:15 * 60000,limit:600,standardHeaders:'draft-8',legacyHeaders:false,message:{message:'Bạn thao tác quá nhanh. Vui lòng thử lại sau.'}});
+  app.use('/api/v1/public',(req,res,next) => req.method === 'GET' ? publicReadLimiter(req,res,next) : limiter(req,res,next));
+  app.use('/api/v1/login',rateLimit({windowMs:15 * 60000,limit:demo ? 300 : loginLimit,standardHeaders:'draft-8',legacyHeaders:false,message:{message:'Bạn thao tác quá nhanh. Vui lòng thử lại sau.'}}));
   const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024, files: 1, fields: 24, fieldSize: 10000 } }).single('file');
   const stagedFiles = (req, res, next) => upload(req, res, async error => {
     if (error) return next(error);
@@ -141,9 +144,9 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
     db.prepare(`INSERT INTO candidates(id,full_name,email,phone,location,source,created_by,received_at,created_at,updated_at,owner_id,notes,consent_status,consent_at,consent_version,portfolio)
       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(cid, data.fullName || '', normalizeEmail(data.email), normalizePhone(data.phone), data.location || '', data.source,
       actorId, data.receivedAt || time, time, time, data.ownerId || null, data.notes || '', data.consentStatus || 'pending', data.consentStatus === 'granted' ? time : null,
-      data.consentStatus === 'granted' ? 'recruitment-v1' : null, data.portfolio || '');
+      data.consentStatus === 'granted' ? 'recruitment-v2' : null, data.portfolio || '');
     audit(db, cid, actorId, 'candidate.created', { source: data.source, receivedAt: data.receivedAt || time });
-    if (data.consentStatus === 'granted') audit(db, cid, actorId, 'consent.granted', { version: 'recruitment-v1', evidence: data.consentEvidence || 'Ứng viên xác nhận trên biểu mẫu công khai.' });
+    if (data.consentStatus === 'granted') audit(db, cid, actorId, 'consent.granted', { version: 'recruitment-v2', evidence: data.consentEvidence || 'Ứng viên xác nhận trên biểu mẫu công khai.' });
     addApplication(cid, data, actorId);
     return cid;
   }
@@ -172,7 +175,7 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
 
   app.get('/api/v1/health', (req, res) => { db.prepare('SELECT 1').get(); res.json({ status: 'ok', demo }); });
   app.get('/api/v1/scanner-status', staff, async (req, res) => res.json(await scannerStatus()));
-  app.get('/api/v1/config', (req, res) => res.json({ demo, needsSetup: !demo && !hasAdministrator(db), policyVersion: 'recruitment-v1' }));
+  app.get('/api/v1/config', (req, res) => res.json({ demo, needsSetup: !demo && !hasAdministrator(db), policyVersion: 'recruitment-v2' }));
   app.post('/api/v1/demo-session', (req, res) => {
     if (!demo) return res.sendStatus(404);
     const role = z.enum(['hr','admin','boss']).parse(req.body.role || 'hr');
@@ -195,6 +198,8 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
   });
   registerInternalRoutes(app, { db, staff, editor, demo, getCandidate, idempotent });
   registerJobRoutes(app, { db, staff, editor });
+  registerDocumentPreview(app, { db, staff, dataDir });
+  registerTranslations(app, { db, staff, editor, dataDir, service:translationService, settingsStore:translationSettingsStore, fetchImpl:translationFetch, demo });
   app.get('/api/v1/candidates', staff, (req, res) => {
     const candidates = db.prepare('SELECT id FROM candidates ORDER BY received_at DESC,created_at DESC').all().map(c => getCandidate(c.id));
     res.json(candidates);
@@ -249,8 +254,8 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
         if (previous[column] !== value) { changes[column] = { before: previous[column], after: value }; db.prepare(`UPDATE candidates SET ${column}=? WHERE id=?`).run(value, previous.id); }
       }
       if (data.consentStatus && data.consentStatus !== previous.consent_status) {
-        db.prepare('UPDATE candidates SET consent_at=?,consent_version=? WHERE id=?').run(now(), 'recruitment-v1', previous.id);
-        audit(db, previous.id, req.user.id, `consent.${data.consentStatus}`, { evidence: data.consentEvidence || '', version: 'recruitment-v1' });
+        db.prepare('UPDATE candidates SET consent_at=?,consent_version=? WHERE id=?').run(now(), 'recruitment-v2', previous.id);
+        audit(db, previous.id, req.user.id, `consent.${data.consentStatus}`, { evidence: data.consentEvidence || '', version: 'recruitment-v2' });
         if (data.consentStatus === 'withdrawn') db.prepare('UPDATE update_tokens SET revoked_at=? WHERE candidate_id=? AND used_at IS NULL').run(now(), previous.id);
       }
       db.prepare('UPDATE candidates SET updated_at=? WHERE id=?').run(now(), previous.id);
@@ -365,7 +370,7 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
     const parsed = publicSchema.parse(req.body);
     if (!req.file) fail(400, 'Vui lòng đính kèm CV.'); validateFile(req.file); assertJob(parsed.jobId);
     idempotent(req, res, 'public-application', () => {
-      const data = { ...parsed, email: normalizeEmail(parsed.email), phone: normalizePhone(parsed.phone), source: 'Website', receivedAt: now(), consentStatus: 'granted', consentEvidence: 'Ứng viên xác nhận chính sách recruitment-v1 trên website.' };
+      const data = { ...parsed, email: normalizeEmail(parsed.email), phone: normalizePhone(parsed.phone), source: 'Website', receivedAt: now(), consentStatus: 'granted', consentEvidence: 'Ứng viên xác nhận chính sách recruitment-v2 trên website.' };
       const matches = duplicateMatches(db, data);
       if (matches.length) {
         const sid = id();
@@ -387,9 +392,9 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
       // A bearer link may append documents or fill gaps, but cannot silently overwrite an existing identity.
       const conflicts = duplicateMatches(db, data, candidate.id);
       for (const [column, value] of Object.entries(provided)) if (!candidate[column] && value && (!['email','phone'].includes(column) || !conflicts.length)) db.prepare(`UPDATE candidates SET ${column}=? WHERE id=?`).run(value, candidate.id);
-      db.prepare("UPDATE candidates SET consent_status='granted',consent_at=?,consent_version='recruitment-v1',updated_at=? WHERE id=?").run(now(), now(), candidate.id);
+      db.prepare("UPDATE candidates SET consent_status='granted',consent_at=?,consent_version='recruitment-v2',updated_at=? WHERE id=?").run(now(), now(), candidate.id);
       audit(db, candidate.id, 'public', 'candidate.supplemented', { provided, notes: data.notes, contactNeedsReview: conflicts.length > 0, existingValuesPreserved: true });
-      audit(db, candidate.id, 'public', 'consent.granted', { version: 'recruitment-v1', evidence: 'Ứng viên xác nhận khi bổ sung hồ sơ.' });
+      audit(db, candidate.id, 'public', 'consent.granted', { version: 'recruitment-v2', evidence: 'Ứng viên xác nhận khi bổ sung hồ sơ.' });
       saveFile(req.file, candidate.id, null, 'public');
       db.prepare('UPDATE update_tokens SET used_at=? WHERE token_hash=?').run(now(), record.token_hash);
       return { received: true, message: 'Thông tin bổ sung đã được gắn vào hồ sơ của bạn. Cảm ơn bạn!' };
@@ -407,7 +412,7 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
     if (error instanceof multer.MulterError) return res.status(400).json({ message: error.code === 'LIMIT_FILE_SIZE' ? 'Dung lượng tối đa là 10 MB.' : 'Tệp hoặc biểu mẫu vượt quá giới hạn cho phép.' });
     const status = error.status || 500;
     if (status >= 500) console.error('Request failed:', error.message);
-    res.status(status).json({ message: status >= 500 ? 'Hệ thống chưa xử lý được yêu cầu. Vui lòng thử lại.' : error.message, ...(error.code === 'POSSIBLE_DUPLICATE' ? { code: error.code, matches: error.matches } : {}) });
+    res.status(status).json({ message: error.publicMessage || (status >= 500 ? 'Hệ thống chưa xử lý được yêu cầu. Vui lòng thử lại.' : error.message), ...(error.code === 'POSSIBLE_DUPLICATE' ? { code: error.code, matches: error.matches } : {}) });
   });
   return { app, db };
 }
