@@ -59,6 +59,17 @@ body, .public-page { background: var(--bg); color: var(--text); }
 .connection-banner > a { color: #167b9f; }
 .banner-symbol { color: #2c93b0; background: #d9f0f8; }
 .candidate-table th { background: #f6fafc; color: #6b8596; }
+.candidate-table .candidate-stage-column { min-width: 190px; }
+.candidate-table th.candidate-stage-column { color: #31576c; font-weight: 700; }
+.candidate-table .stage { min-width: 156px; min-height: 38px; padding: 8px 12px; gap: 8px; border-radius: 8px; font-size: calc(12px * var(--text-scale, 1.2)); font-weight: 700; line-height: 1.4; }
+.candidate-table .stage > span { width: 7px; height: 7px; flex-shrink: 0; opacity: 1; }
+.candidate-table .stage.blue { color: #1756a9; background: #e8f0ff; border-color: #b8cff3; }
+.candidate-table .stage.purple { color: #6d3491; background: #f1e8fa; border-color: #d4b8e8; }
+.candidate-table .stage.teal { color: #146653; background: #e2f5ed; border-color: #a7d8c7; }
+.candidate-table .stage.amber { color: #865000; background: #fff1cd; border-color: #efcf78; }
+.candidate-table .stage.cyan { color: #066380; background: #dff5fc; border-color: #93d3e7; }
+.candidate-table .stage.green { color: #326314; background: #e9f5d7; border-color: #b8d58b; }
+.candidate-table .stage.gray { color: #515d68; background: #eef1f4; border-color: #cbd2d9; }
 .candidate-name strong, .job-cell strong { color: #2f536c; }
 .candidate-name small, .job-cell small { color: #788f9e; }
 .source { color: #6f8798; }
