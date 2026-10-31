@@ -86,6 +86,11 @@ export function openDatabase(directory, demo = false) {
       status TEXT NOT NULL DEFAULT 'scheduled' CHECK(status IN ('scheduled','completed','cancelled')),
       created_by TEXT NOT NULL REFERENCES users(id), created_at TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS interview_evaluations (
+      interview_id TEXT PRIMARY KEY REFERENCES interviews(id), reviewer_id TEXT NOT NULL REFERENCES users(id),
+      score REAL NOT NULL CHECK(score>=0 AND score<=10), result TEXT NOT NULL CHECK(result IN ('pass','follow_up','fail')),
+      comments TEXT NOT NULL, revision INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS document_translations (
       document_id TEXT NOT NULL REFERENCES documents(id), target_language TEXT NOT NULL,
       source_checksum TEXT NOT NULL, text TEXT NOT NULL, model TEXT NOT NULL,

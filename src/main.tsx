@@ -18,6 +18,7 @@ import './styles.css';
 import './internal.css';
 import './careers.css';
 import './documents.css';
+import './evaluations.css';
 import './accessibility.css';
 import './brands.css';
 

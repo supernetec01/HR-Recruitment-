@@ -38,7 +38,7 @@ test('Admin confirms deleting the wrong file, keeps other files, and sees a hist
   await wrong.getByRole('button',{name:'Xóa tài liệu CV tải nhầm.pdf',exact:true}).click();await page.screenshot({path:test.info().outputPath('delete-confirmation.png'),fullPage:true,animations:'disabled'});
   await dialog.getByRole('button',{name:'Xác nhận xóa',exact:true}).click();await expect(dialog).toHaveCount(0);await expect(wrong).toHaveCount(0);await expect(correct).toBeVisible();await expect(page.locator('.detail-tabs button').nth(1)).toContainText('(1)');
   const removed=c.documents.find((doc:{original_name:string})=>doc.original_name==='CV tải nhầm.pdf');expect((await admin.get(`/api/v1/documents/${removed.id}/download`)).status()).toBe(404);
-  await page.locator('.detail-tabs button').nth(3).click();await expect(page.locator('.timeline')).toContainText('Xóa tài liệu');await page.reload();await page.locator('.detail-tabs button').nth(1).click();await expect(page.locator('.document-card')).toHaveCount(1);expect(errors).toEqual([]);
+  await page.locator('.detail-tabs').getByRole('button',{name:'Lịch sử',exact:true}).click();await expect(page.locator('.timeline')).toContainText('Xóa tài liệu');await page.reload();await page.locator('.detail-tabs button').nth(1).click();await expect(page.locator('.document-card')).toHaveCount(1);expect(errors).toEqual([]);
 });
 test('a stale confirmation stays open with an error; reloading allows HR to delete the last CV',async({page})=>{
   const c=await candidate();await open(page,c.id,hr);await page.getByRole('button',{name:'Xóa tài liệu CV đúng.pdf',exact:true}).click();const dialog=page.getByRole('dialog');

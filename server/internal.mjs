@@ -1,3 +1,4 @@
+import { withInterviewEvaluation } from './interview-evaluations.mjs';
 import { z } from 'zod';
 import { id, now, transaction, audit, passwordHash, verifyPassword } from './db.mjs';
 import { createAccount, normalizeUsername, publicUser, validUsername } from './accounts.mjs';
@@ -99,7 +100,7 @@ export function registerInternalRoutes(app, { db, staff, editor, demo, getCandid
     u.name AS interviewer_name,c.full_name AS candidate_name,c.id AS candidate_id,j.title AS job_title
     FROM interviews i JOIN users u ON u.id=i.interviewer_id JOIN applications a ON a.id=i.application_id
     JOIN candidates c ON c.id=a.candidate_id JOIN jobs j ON j.id=a.job_id`;
-  app.get('/api/v1/interviews', staff, (req, res) => res.json(db.prepare(`${interviewQuery} ORDER BY starts_at`).all()));
+  app.get('/api/v1/interviews', staff, (req, res) => res.json(db.prepare(`${interviewQuery} ORDER BY starts_at`).all().map(interview=>withInterviewEvaluation(db,interview))));
   const bookingSchema = z.object({
     applicationId: z.string().min(1), interviewerId: z.string().min(1), startsAt: z.iso.datetime(),
     durationMinutes: z.coerce.number().int().min(15).max(240).optional(), endsAt: z.iso.datetime().optional(),

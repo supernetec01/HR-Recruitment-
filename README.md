@@ -54,6 +54,8 @@ Cổng `/tuyen-dung` cho ứng viên tự gửi; nghi trùng được đưa vào
 
 Nếu tải nhầm file, Admin/HR vào **CV & tài liệu → Xóa tài liệu**, kiểm tra tên/phiên bản rồi xác nhận. Xóa file cùng bản dịch, giữ các tài liệu khác và hồ sơ ứng viên, đồng thời ghi lịch sử. CV đang được dùng cho yêu cầu hoặc lịch phỏng vấn chưa hoàn tất sẽ được bảo vệ. Xem [hướng dẫn xóa tài liệu](docs/document-deletion.md).
 
+Sau khi HR/Admin đánh dấu buổi phỏng vấn **Hoàn thành**, người được phân công có thể vào **Lịch phỏng vấn → Đã hoàn thành → Đánh giá** hoặc **Hồ sơ ứng viên → Đánh giá**, nhập nhận xét, kết quả đề xuất và điểm 0–10. Cho phép số lẻ như 8,5; lưu người đánh giá và lịch sử chỉnh sửa. Xem [hướng dẫn đánh giá phỏng vấn](docs/interview-evaluations.md).
+
 ## Đăng JD và trang tuyển dụng công khai
 
 Trang `/tuyen-dung` hiển thị danh sách vị trí và bộ lọc thương hiệu từ database; mỗi vị trí có thông tin địa điểm, hình thức, mức lương và số người cần tuyển. Ba thương hiệu ban đầu là **phụ kiện xe Safestraps**, **thiết bị âm thanh JieLien**, **Mẹ và Bé Baby tatto**.

@@ -1,3 +1,4 @@
+import { registerInterviewEvaluations, withInterviewEvaluation } from './interview-evaluations.mjs';
 import { registerDocumentDeletion } from './document-deletion.mjs';
 import { registerBrandRoutes } from './company-brands.mjs';
 import express from 'express';
@@ -214,6 +215,7 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
     res.clearCookie('sn_session', { path: '/' }); res.json({ ok: true });
   });
   registerInternalRoutes(app, { db, staff, editor, demo, getCandidate, idempotent });
+  registerInterviewEvaluations(app, { db, staff, idempotent });
   registerJobRoutes(app, { db, staff, editor, idempotent });
   registerBrandRoutes(app, { db, staff, idempotent });
   registerDocumentPreview(app, { db, staff, dataDir });
@@ -255,7 +257,7 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
     const history = db.prepare(`SELECT l.*,u.name AS actor_name FROM audit_logs l JOIN users u ON u.id=l.actor_id WHERE candidate_id=? ORDER BY l.created_at DESC,l.rowid DESC`).all(candidate.id).map(l => ({ ...l, details: JSON.parse(l.details) }));
     const links = db.prepare('SELECT token_hash,created_at,expires_at,used_at,revoked_at FROM update_tokens WHERE candidate_id=? ORDER BY created_at DESC').all(candidate.id);
     const interviews = db.prepare(`SELECT i.*,u.name AS interviewer_name,j.title AS job_title FROM interviews i JOIN users u ON u.id=i.interviewer_id
-      JOIN applications a ON a.id=i.application_id JOIN jobs j ON j.id=a.job_id WHERE a.candidate_id=? ORDER BY i.starts_at DESC`).all(candidate.id);
+      JOIN applications a ON a.id=i.application_id JOIN jobs j ON j.id=a.job_id WHERE a.candidate_id=? ORDER BY i.starts_at DESC`).all(candidate.id).map(interview => withInterviewEvaluation(db,{...interview,candidate_id:candidate.id,candidate_name:candidate.full_name}));
     res.json({ ...candidate, history, links, interviews });
   });
   app.patch('/api/v1/candidates/:id', staff, editor, (req, res) => {
