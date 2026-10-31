@@ -1,7 +1,7 @@
 import { t } from './locale';
-import { useState, type ChangeEvent, type FormEvent } from 'react';
+import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Check, Eye, FilePlus2, Mail, Pencil } from 'lucide-react';
-import { api, errorMessage, json } from './api';
+import { api, errorMessage, json, key } from './api';
 import { Alert, Field, Modal } from './ui';
 import { EMPLOYMENT_TYPES, JDContent, JOB_BRANDS } from './jobs';
 import { CONTENT_MARKETING_JD } from './jd-template';
@@ -20,21 +20,22 @@ const initialDraft = (job?: Job) => ({
 
 export function JobForm({ existing, onClose, onSaved }: { existing?: Job; onClose: () => void; onSaved: () => void }) {
   const [draft, setDraft] = useState(() => initialDraft(existing));
+  const requestKey = useRef(key());
   const [view, setView] = useState<'edit' | 'preview'>('edit');
   const [error, setError] = useState(''), [busy, setBusy] = useState(false);
-  const bind = (field: keyof typeof draft) => ({ name: field, value: draft[field], onChange: (event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setDraft(previous => ({ ...previous, [field]: event.target.value })) });
+  const bind = (field: keyof typeof draft) => ({ name: field, value: draft[field], onChange: (event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {requestKey.current = key();setDraft(previous => ({ ...previous, [field]: event.target.value }));} });
   const preview: Job = { id: existing?.id || 'preview', title: draft.title || 'Tên vị trí tuyển dụng', department: draft.department, openings: Number(draft.openings) || 0, location: draft.location, employment_type: draft.employmentType, description: draft.description, requirements: draft.requirements, benefits: draft.benefits, salary_range: draft.salaryRange, working_hours: draft.workingHours, company_name: draft.companyName, application_instructions: draft.applicationInstructions, application_email: draft.applicationEmail, application_email_subject: draft.applicationEmailSubject, application_zalo: draft.applicationZalo };
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (busy) return;
     const form = event.currentTarget;
     if (!form.checkValidity()) { setView('edit'); requestAnimationFrame(() => form.reportValidity()); return; }
     setBusy(true); setError('');
-    try { await api(existing ? `/jobs/${existing.id}` : '/jobs', { method: existing ? 'PATCH' : 'POST', body: json({ ...draft, ...(existing?.revision ? { expectedRevision: existing.revision } : {}) }) }); onSaved(); }
+    try { await api(existing ? `/jobs/${existing.id}` : '/jobs', { method: existing ? 'PATCH' : 'POST', headers:existing ? undefined : {'Idempotency-Key':requestKey.current}, body: json({ ...draft, ...(existing?.revision ? { expectedRevision: existing.revision } : {}) }) }); onSaved(); }
     catch (error) { setError(errorMessage(error)); } finally { setBusy(false); }
   }
   return <Modal title={existing ? t("Chỉnh sửa JD") : t("Tạo JD tuyển dụng")} subtitle={t("Nhập đầy đủ thông tin công việc và xem trước nội dung ứng viên sẽ đọc.")} onClose={() => !busy && onClose()} wide className="jd-editor-modal">
     <form className="jd-editor" onSubmit={submit} noValidate>
-      <div className="jd-editor-tools"><div role="tablist" aria-label={t("Chế độ biên soạn JD")}><button type="button" role="tab" aria-selected={view === 'edit'} onClick={() => setView('edit')}><Pencil size={16}/>{t("Nhập thông tin")}</button><button type="button" role="tab" aria-selected={view === 'preview'} onClick={() => setView('preview')}><Eye size={16}/>{t("Xem trước JD")}</button></div>{!existing && <button type="button" className="text-button" disabled={busy} onClick={() => { setDraft(previous => ({ ...previous, ...CONTENT_MARKETING_JD })); setView('edit'); }}><FilePlus2 size={16}/>{t("Điền mẫu Content Marketing")}</button>}</div>
+      <div className="jd-editor-tools"><div role="tablist" aria-label={t("Chế độ biên soạn JD")}><button type="button" role="tab" aria-selected={view === 'edit'} onClick={() => setView('edit')}><Pencil size={16}/>{t("Nhập thông tin")}</button><button type="button" role="tab" aria-selected={view === 'preview'} onClick={() => setView('preview')}><Eye size={16}/>{t("Xem trước JD")}</button></div>{!existing && <button type="button" className="text-button" disabled={busy} onClick={() => { requestKey.current = key(); setDraft(previous => ({ ...previous, ...CONTENT_MARKETING_JD })); setView('edit'); }}><FilePlus2 size={16}/>{t("Điền mẫu Content Marketing")}</button>}</div>
       <div className="modal-body">
         <div className="jd-editor-fields" hidden={view !== 'edit'}>
           <section className="jd-editor-section" aria-labelledby="jd-general-heading"><h3 id="jd-general-heading"><span>01</span>{t("Thông tin chung")}</h3><div className="form-grid">

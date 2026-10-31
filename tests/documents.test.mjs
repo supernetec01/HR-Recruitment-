@@ -110,9 +110,10 @@ test('clean arbitrary file types are retained byte-for-byte and unknown formats 
 test('a duplicate submission CV is available to staff before identity resolution and stays private', async () => {
   const created = await upload();
   const candidateId = instance.db.prepare('SELECT candidate_id FROM documents WHERE id=?').get(created.id).candidate_id;
-  const update = await fetch(`${base}/api/v1/candidates/${candidateId}`, { method: 'PATCH', headers: { Cookie: cookie, 'Content-Type': 'application/json', 'X-Requested-With': 'SuperNet' }, body: JSON.stringify({ email: 'cv-duplicate@example.com' }) });
+  const snapshot = await (await fetch(`${base}/api/v1/candidates/${candidateId}`,{headers:{Cookie:cookie}})).json();
+  const update = await fetch(`${base}/api/v1/candidates/${candidateId}`, { method: 'PATCH', headers: { Cookie: cookie, 'Content-Type': 'application/json', 'X-Requested-With': 'SuperNet' }, body: JSON.stringify({email:'cv-duplicate@example.com',expectedRevision:snapshot.revision}) });
   assert.equal(update.status, 200);
-  const job = await fetch(`${base}/api/v1/jobs`, { method: 'POST', headers: { Cookie: cookie, 'Content-Type': 'application/json', 'X-Requested-With': 'SuperNet' }, body: JSON.stringify({ title: 'CV test', department: 'QA', location: 'HCM', openings: 1, description: 'Công việc kiểm thử tài liệu tuyển dụng.' }) });
+  const job = await fetch(`${base}/api/v1/jobs`, { method: 'POST', headers: { Cookie: cookie, 'Content-Type': 'application/json', 'X-Requested-With': 'SuperNet', 'Idempotency-Key':randomUUID() }, body: JSON.stringify({ title: 'CV test', department: 'QA', location: 'HCM', openings: 1, description: 'Công việc kiểm thử tài liệu tuyển dụng.' }) });
   const form = new FormData();
   for (const [key, value] of Object.entries({ fullName: 'Ứng viên nộp lại', email: 'cv-duplicate@example.com', jobId: (await job.json()).id, consent: 'true' })) form.set(key, value);
   form.set('file', new Blob([pdf]), 'CV-nộp-lại.pdf');

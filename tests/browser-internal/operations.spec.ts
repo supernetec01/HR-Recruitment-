@@ -25,7 +25,7 @@ test.beforeAll(async ({playwright}) => {
     }
     if (username === 'interviewer-ops-two') interviewerTwoId = member.id;
   }
-  const job = await (await admin.post('/api/v1/jobs',{data:{title:'Vị trí vận hành phỏng vấn',department:'Marketing',location:'Super Net',description:'Kiểm thử luồng từ yêu cầu đến lịch phỏng vấn.',openings:1}})).json();
+  const job = await (await admin.post('/api/v1/jobs',{headers:{'Idempotency-Key':crypto.randomUUID()},data:{title:'Vị trí vận hành phỏng vấn',department:'Marketing',location:'Super Net',description:'Kiểm thử luồng từ yêu cầu đến lịch phỏng vấn.',openings:1}})).json();
   const result = await admin.post('/api/v1/candidates',{headers:{'Idempotency-Key':crypto.randomUUID()},multipart:{fullName:'Ứng viên đã trao đổi lịch',email:`interview-ops-${crypto.randomUUID()}@example.com`,source:'Zalo',jobId:job.id,file:{name:'CV-vận-hành.pdf',mimeType:'application/pdf',buffer:Buffer.concat([Buffer.from('\n'),readFileSync('tests/fixtures/cv.pdf')])}}});
   expect(result.status()).toBe(200); candidateId = (await result.json()).candidate.id;
 });

@@ -915,5 +915,8 @@ export const zhCN: Record<string,string> = {
   "Khám phá sản phẩm của Super Net": "探索 Super Net 的产品",
   "Xem các sản phẩm chúng tôi đang kinh doanh tại ba cửa hàng Shopee. Liên kết mở trong tab mới để bạn tiếp tục tìm hiểu cơ hội nghề nghiệp tại đây.": "浏览我们在三家 Shopee 店铺销售的产品。链接将在新标签页打开，您可以继续在此了解职业机会。",
   "Xem sản phẩm trên Shopee": "在 Shopee 查看产品",
-  "Xem sản phẩm {p0} trên Shopee (mở trong tab mới)": "在 Shopee 查看 {p0} 产品（在新标签页打开）"
+  "Xem sản phẩm {p0} trên Shopee (mở trong tab mới)": "在 Shopee 查看 {p0} 产品（在新标签页打开）",
+  "Cần tải phiên bản hồ sơ mới trước khi chỉnh sửa.": "编辑前请先加载最新版本的候选人档案。",
+  "Hồ sơ đã được người khác cập nhật. Thay đổi của bạn chưa được lưu; bản nháp vẫn được giữ trong biểu mẫu.": "其他人已更新此档案。您的更改尚未保存，草稿仍保留在表单中。",
+  "Xem hồ sơ mới trong tab khác để đối chiếu": "在新标签页中打开最新档案以便对照"
 };

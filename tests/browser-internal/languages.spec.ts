@@ -15,7 +15,7 @@ async function login(page: Page, chinese = false) {
 test.beforeAll(async ({playwright}) => {
   admin = await playwright.request.newContext({baseURL:'http://127.0.0.1:3110',extraHTTPHeaders:{'X-Requested-With':'SuperNet'}});
   expect((await admin.post('/api/v1/login',{data:{login:'admin',password:secret}})).ok()).toBeTruthy();
-  const job = await admin.post('/api/v1/jobs',{data:{title:'Job for Chinese translation',department:'Marketing',location:'Super Net fixture',description:'Create marketing content and work with the marketing team.',openings:1,applicationEmail:'jobs@example.com'}});
+  const job = await admin.post('/api/v1/jobs',{headers:{'Idempotency-Key':crypto.randomUUID()},data:{title:'Job for Chinese translation',department:'Marketing',location:'Super Net fixture',description:'Create marketing content and work with the marketing team.',openings:1,applicationEmail:'jobs@example.com'}});
   jobId = (await job.json()).id;
   const word = zipSync({'[Content_Types].xml':strToU8('<Types/>'),'word/document.xml':strToU8('<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>DOCX VIEWER FIXTURE</w:t></w:r></w:p><w:p><w:r><w:t>Experience: Marketing &amp; Content</w:t></w:r></w:p><w:p><w:r><w:t>&lt;script&gt;window.cvInjected=true&lt;/script&gt;</w:t></w:r></w:p></w:body></w:document>')});
   for (const [name,bytes,filename] of [['Canvas CV fixture',readFileSync('tests/fixtures/cv.pdf'),'CV.pdf'],['Word CV fixture',word,'CV.docx']] as const) {

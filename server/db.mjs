@@ -98,6 +98,7 @@ export function openDatabase(directory, demo = false) {
     );
   `);
   // Additive migrations preserve existing applicants, documents and staff accounts.
+  if (!db.prepare('PRAGMA table_info(candidates)').all().some(column => column.name === 'revision')) db.exec('ALTER TABLE candidates ADD COLUMN revision INTEGER NOT NULL DEFAULT 1');
   if (!db.prepare('PRAGMA table_info(documents)').all().some(column => column.name === 'scan_result')) db.exec("ALTER TABLE documents ADD COLUMN scan_result TEXT NOT NULL DEFAULT ''");
   const jobColumns = new Set(db.prepare('PRAGMA table_info(jobs)').all().map(c => c.name));
   for (const column of ['requirements','benefits','working_hours','salary_range','business_line','application_deadline','updated_at','company_name','application_instructions','application_email','application_email_subject','application_zalo']) {

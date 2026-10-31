@@ -19,7 +19,7 @@ test.beforeAll(async ({ playwright }) => {
   for (const [username,name,role] of [['boss-flow','Sếp Nội Bộ','boss'],['hr-flow','HR Nội Bộ','hr']]) {
     if (!users.some((user: { username: string }) => user.username === username)) expect((await api.post('/api/v1/admin/users',{data:{username,name,role,password:secret}})).status()).toBe(201);
   }
-  const job = await (await api.post('/api/v1/jobs',{data:{title:'Marketing Nội Bộ',department:'Marketing',location:'Super Net',openings:1,description:'Sáng tạo nội dung thương mại điện tử tại Super Net.'}})).json();
+  const job = await (await api.post('/api/v1/jobs',{headers:{'Idempotency-Key':crypto.randomUUID()},data:{title:'Marketing Nội Bộ',department:'Marketing',location:'Super Net',openings:1,description:'Sáng tạo nội dung thương mại điện tử tại Super Net.'}})).json();
   const candidates = await (await api.get('/api/v1/candidates')).json();
   const current = candidates.find((candidate: { phone: string }) => candidate.phone === '0908887766');
   if (current) { candidateId = current.id; await api.dispose(); return; }

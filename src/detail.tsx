@@ -1,7 +1,7 @@
 import { t } from './locale';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ArrowLeft, ArrowUpRight, CalendarDays, Check, Clock3, FileText, History, Link2, LoaderCircle, Mail, MapPin, Pencil, Phone, Plus, ShieldCheck, ShieldQuestion, UserRound, CalendarPlus } from 'lucide-react';
-import { api, date, errorMessage, json, key, STAGES, time } from './api';
+import { api, ApiError, date, errorMessage, json, key, STAGES, time } from './api';
 import { Alert, Avatar, Empty, Field, FileInput, Modal, Spinner, Stage } from './ui';
 import { InterviewForm, UpdateLinkForm } from './forms';
 import { RequestInterviewForm } from './internal';
@@ -28,14 +28,15 @@ export default function CandidateDetail({ id, user, users, jobs, onBack, onRefre
   const [requestApplication, setRequestApplication] = useState<string | null>(null);
   const [busy, setBusy] = useState(false), [file, setFile] = useState<File | null>(null), [newApplication, setNewApplication] = useState(false);
   const requestKey = useRef(key()); const editable = ['admin','hr'].includes(user.role);
+  const [conflict,setConflict] = useState(false);
   async function load() { try { const result = await api<Detail>(`/candidates/${id}`); setCandidate(result); setError(''); } catch (err) { setError(errorMessage(err)); } }
   useEffect(() => { void load(); }, [id]);
-  async function perform(fn: () => Promise<unknown>, message: string) { setBusy(true); setError(''); try { await fn(); await load(); onRefresh(); notify(message); } catch (err) { setError(errorMessage(err)); } finally { setBusy(false); } }
+  async function perform(fn: () => Promise<unknown>, message: string) { setBusy(true); setError(''); setConflict(false); try { await fn(); await load(); onRefresh(); notify(message); } catch (err) { setError(errorMessage(err)); setConflict(err instanceof ApiError && err.code === 'CANDIDATE_CONFLICT'); } finally { setBusy(false); } }
   if (!candidate) return error ? <Alert>{t(error)}</Alert> : <Spinner/>;
   const c = candidate;
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); const values = Object.fromEntries(new FormData(event.currentTarget));
-    await perform(async () => { await api(`/candidates/${id}`, { method: 'PATCH', body: json(values) }); setEditing(false); }, 'Đã cập nhật hồ sơ.');
+    await perform(async () => { await api(`/candidates/${id}`, { method: 'PATCH', body: json({...values,expectedRevision:c.revision}) }); setEditing(false); }, 'Đã cập nhật hồ sơ.');
   }
   async function upload(event: FormEvent) {
     event.preventDefault(); if (!file) return; const data = new FormData(); data.set('file', file);
@@ -45,6 +46,7 @@ export default function CandidateDetail({ id, user, users, jobs, onBack, onRefre
     <button className="back-link" onClick={onBack}><ArrowLeft size={17}/>{t("Quay lại danh sách ứng viên")}</button>
     <div className="detail-hero"><div className="profile-mini"><Avatar name={c.full_name}/><div><span className="eyebrow">{t("HỒ SƠ ỨNG VIÊN · ")}{c.id.startsWith('demo') ? t("MINH HỌA") : c.id.slice(0, 8).toUpperCase()}</span><h1>{c.full_name || t("Ứng viên chưa có tên")}</h1><p>{c.applications.map(a => a.job_title).join(' · ') || t("Chưa chọn vị trí ứng tuyển")}</p></div></div><div className="hero-actions">{editable && <><button className="button secondary" onClick={() => setEditing(!editing)}><Pencil size={16}/>{editing ? t("Hủy chỉnh sửa") : t("Chỉnh sửa")}</button><button className="button primary" onClick={() => setLinkForm(true)} disabled={c.consent_status === 'withdrawn'}><Link2 size={17}/>{t("Mời bổ sung hồ sơ")}</button></>}</div></div>
     {error && <Alert>{t(error)}</Alert>}
+    {conflict && <p className="conflict-help"><a className="text-button" href={`/?page=candidates&candidate=${encodeURIComponent(id)}`} target="_blank" rel="noopener noreferrer">{t('Xem hồ sơ mới trong tab khác để đối chiếu')}</a></p>}
     <div className="detail-layout"><aside className="profile-card panel">
       <div className="profile-completeness"><span className={`completeness ${c.complete ? 'complete' : ''}`}>{c.complete ? <Check size={14}/> : <Clock3 size={14}/>} {c.complete ? t("Đầy đủ thông tin") : t("Cần bổ sung")}</span><p>{c.complete ? t("Hồ sơ đã có các thông tin cơ bản.") : c.missing.join(' · ')}</p></div>
       <dl className="contact-list"><div><dt><Mail size={16}/>{t("Email")}</dt><dd>{c.email || t("Chưa bổ sung")}</dd></div><div><dt><Phone size={16}/>{t("Số điện thoại")}</dt><dd>{c.phone || t("Chưa bổ sung")}</dd></div><div><dt><MapPin size={16}/>{t("Khu vực")}</dt><dd>{c.location || t("Chưa bổ sung")}</dd></div><div><dt><UserRound size={16}/>{t("Người phụ trách")}</dt><dd>{c.owner_name || t("Chưa phân công")}</dd></div></dl>

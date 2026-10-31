@@ -13,6 +13,12 @@ async function request(path, { method = 'GET', data, form, publicRequest = false
   if (!publicRequest && session) headers.Cookie = session;
   if (idem) headers['Idempotency-Key'] = idem;
   if (data) headers['Content-Type'] = 'application/json';
+  // Existing fixtures read the current revision; concurrency regressions use explicit snapshots.
+  if (method === 'POST' && path === '/jobs' && !headers['Idempotency-Key']) headers['Idempotency-Key'] = crypto.randomUUID();
+  if (method === 'PATCH' && /^\/candidates\/[^/]+$/.test(path) && data && data.expectedRevision === undefined) {
+    const latest = await fetch(`${base}/api/v1${path}`,{headers});
+    if (latest.ok) data = {...data,expectedRevision:(await latest.json()).revision};
+  }
   const response = await fetch(`${base}/api/v1${path}`, { method, headers, body: form || (data ? JSON.stringify(data) : undefined) });
   const body = await response.json().catch(() => null);
   return { response, body, status: response.status };

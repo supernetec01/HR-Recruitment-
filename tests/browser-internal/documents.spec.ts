@@ -109,7 +109,7 @@ test('expired sessions show a login message inside the viewer instead of a broke
 });
 
 test('staff can view and download a public duplicate CV from the pending list before resolving it', async ({ page }) => {
-  const job = await admin.post('/api/v1/jobs', { data: { title: 'CV đang xác minh', department: 'QA', location: 'HCM', description: 'Công việc kiểm thử tiếp nhận CV từ ứng viên.', openings: 1 } });
+  const job = await admin.post('/api/v1/jobs',{headers:{'Idempotency-Key':crypto.randomUUID()}, data: { title: 'CV đang xác minh', department: 'QA', location: 'HCM', description: 'Công việc kiểm thử tiếp nhận CV từ ứng viên.', openings: 1 } });
   expect(job.status()).toBe(201);
   const pendingName = 'Ứng viên CV đang xác minh';
   const accepted = await admin.post('/api/v1/public/applications', { headers: { 'Idempotency-Key': crypto.randomUUID() }, multipart: {
@@ -131,7 +131,7 @@ test('staff can view and download a public duplicate CV from the pending list be
 });
 
 test('an applicant can upload a bilingual PDF with embedded Content Credentials after antivirus scanning', async ({ page }) => {
-  const job = await admin.post('/api/v1/jobs', { data: { title: 'CV song ngữ', department: 'QA', location: 'HCM', description: 'Kiểm thử CV có metadata Content Credentials.', openings: 1 } });
+  const job = await admin.post('/api/v1/jobs',{headers:{'Idempotency-Key':crypto.randomUUID()}, data: { title: 'CV song ngữ', department: 'QA', location: 'HCM', description: 'Kiểm thử CV có metadata Content Credentials.', openings: 1 } });
   expect(job.status()).toBe(201);
   const jobId = (await job.json()).id, applicantEmail = `c2pa-${crypto.randomUUID()}@example.com`;
   const filename = '01_會計履歷_中越雙語_CV_kiểm_thử.pdf';

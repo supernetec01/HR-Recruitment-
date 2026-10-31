@@ -4,7 +4,7 @@ import rateLimit from 'express-rate-limit';
 import multer from 'multer';
 import { z } from 'zod';
 import { randomBytes } from 'node:crypto';
-import { readFileSync, writeFileSync, unlinkSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, openSync, closeSync, rmSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { openDatabase, id, now, hash, transaction, audit, duplicateMatches, completeness, normalizeEmail, normalizePhone, verifyPassword, STAGES, SOURCES } from './db.mjs';
 import { publicUser, normalizeUsername } from './accounts.mjs';
@@ -35,6 +35,7 @@ const publicSchema = z.object({
 }).refine(d => d.email || d.phone, 'Cần ít nhất một thông tin liên hệ');
 const supplementSchema = z.object({ fullName: text(120), email, phone, portfolio: url, notes: text(3000), consent: z.enum(['true']) });
 const patchSchema = z.object({
+  expectedRevision: z.number().int().min(1).optional(),
   fullName: z.string().trim().max(120).optional(),
   email: emailValue.optional(), phone: phoneValue.optional(),
   location: z.string().trim().max(200).optional(), ownerId: z.string().trim().max(100).optional(), notes: z.string().trim().max(5000).optional(),
@@ -56,7 +57,7 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
   protectOrigins(app, { appOrigin, trustProxy, production });
   const limiter = rateLimit({ windowMs: 15 * 60000, limit: demo ? 300 : 30, standardHeaders: 'draft-8', legacyHeaders: false, message: { message: 'Bạn thao tác quá nhanh. Vui lòng thử lại sau.' } });
   const publicReadLimiter = rateLimit({windowMs:15 * 60000,limit:600,standardHeaders:'draft-8',legacyHeaders:false,message:{message:'Bạn thao tác quá nhanh. Vui lòng thử lại sau.'}});
-  app.use('/api/v1/public',(req,res,next) => req.method === 'GET' ? publicReadLimiter(req,res,next) : limiter(req,res,next));
+  app.use('/api/v1/public',(req,res,next) => ['GET','HEAD'].includes(req.method) ? publicReadLimiter(req,res,next) : limiter(req,res,next));
   app.use('/api/v1/login',rateLimit({windowMs:15 * 60000,limit:demo ? 300 : loginLimit,standardHeaders:'draft-8',legacyHeaders:false,message:{message:'Bạn thao tác quá nhanh. Vui lòng thử lại sau.'}}));
   const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024, files: 1, fields: 24, fieldSize: 10000 } }).single('file');
   const stagedFiles = (req, res, next) => upload(req, res, async error => {
@@ -113,24 +114,28 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
     const image = hex.startsWith('89504e470d0a1a0a') ? 'image/png' : hex.startsWith('ffd8ff') ? 'image/jpeg' : /^474946383[79]61/.test(hex) ? 'image/gif' : file.buffer.subarray(0, 4).toString() === 'RIFF' && file.buffer.subarray(8, 12).toString() === 'WEBP' ? 'image/webp' : '';
     file.safeMime = pdf ? 'application/pdf' : docx ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : image || (ext === 'txt' && !file.buffer.includes(0) ? 'text/plain' : 'application/octet-stream');
   }
-  function saveFile(file, candidateId, submissionId, actorId) {
+  function saveFile(file, candidateId, submissionId, actorId, createdFiles) {
     if (!file) return;
     validateFile(file);
     if (file.scanResult?.status !== 'clean' || file.scanResult.checksum !== hash(file.buffer)) fail(503, 'Tệp chưa vượt qua kiểm tra mã độc. Tệp chưa được lưu.');
     const docId = id(), stored = `${docId}.bin`;
     const version = candidateId ? db.prepare('SELECT COALESCE(MAX(version),0)+1 AS n FROM documents WHERE candidate_id=?').get(candidateId).n : 1;
-    writeFileSync(resolve(dataDir, 'documents', stored), file.buffer, { mode: 0o600, flag: 'wx' });
-    try {
-      db.prepare(`INSERT INTO documents(id,candidate_id,submission_id,original_name,stored_name,mime_type,size,checksum,version,created_at,created_by,scan_result) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`)
-        .run(docId, candidateId, submissionId, file.originalname, stored, file.safeMime, file.size, hash(file.buffer), version, now(), actorId, JSON.stringify(file.scanResult));
-    } catch (error) { unlinkSync(resolve(dataDir, 'documents', stored)); throw error; }
+    if (!createdFiles) throw new Error('Document writes require a transaction journal');
+    const path = resolve(dataDir, 'documents', stored), descriptor = openSync(path, 'wx', 0o600);
+    createdFiles.push(path); // Only an exclusively created file can be removed on rollback.
+    try { writeFileSync(descriptor, file.buffer); } finally { closeSync(descriptor); }
+    db.prepare(`INSERT INTO documents(id,candidate_id,submission_id,original_name,stored_name,mime_type,size,checksum,version,created_at,created_by,scan_result) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`)
+      .run(docId, candidateId, submissionId, file.originalname, stored, file.safeMime, file.size, hash(file.buffer), version, now(), actorId, JSON.stringify(file.scanResult));
     if (candidateId) audit(db, candidateId, actorId, 'document.uploaded', { documentId: docId, name: file.originalname, version, scan: file.scanResult });
   }
-  function assertJob(jobId) { if (jobId && !db.prepare(`SELECT id FROM jobs WHERE id=? AND ${openJobCondition}`).get(jobId, todayInVietnam())) fail(400, 'Vị trí không tồn tại, đã ngừng tuyển hoặc đã hết hạn nhận hồ sơ.'); }
+  function assertJob(jobId, received = false) {
+    const job = jobId && (received ? db.prepare('SELECT id FROM jobs WHERE id=?').get(jobId) : db.prepare(`SELECT id FROM jobs WHERE id=? AND ${openJobCondition}`).get(jobId, todayInVietnam()));
+    if (jobId && !job) fail(400, 'Vị trí không tồn tại, đã ngừng tuyển hoặc đã hết hạn nhận hồ sơ.');
+  }
   function assertOwner(ownerId) { if (ownerId && !db.prepare("SELECT id FROM users WHERE id=? AND role IN ('hr','admin') AND id!='public' AND active=1 AND is_demo=?").get(ownerId, demo ? 1 : 0)) fail(400, 'Người phụ trách không hợp lệ hoặc đã bị khóa.'); }
-  function addApplication(cid, data, actorId) {
+  function addApplication(cid, data, actorId, received = false) {
     if (!data.jobId) return;
-    assertJob(data.jobId);
+    assertJob(data.jobId, received);
     const previous = db.prepare("SELECT id FROM applications WHERE candidate_id=? AND job_id=? AND stage NOT IN ('hired','rejected') ORDER BY created_at DESC LIMIT 1").get(cid, data.jobId);
     if (previous) { audit(db, cid, actorId, 'application.updated_submission', { applicationId: previous.id, source: data.source, receivedAt: data.receivedAt }); return previous.id; }
     const aid = id();
@@ -138,7 +143,7 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
     audit(db, cid, actorId, 'application.created', { applicationId: aid, jobId: data.jobId, source: data.source });
     return aid;
   }
-  function insertCandidate(data, actorId) {
+  function insertCandidate(data, actorId, received = false) {
     const cid = id(), time = now();
     assertOwner(data.ownerId);
     db.prepare(`INSERT INTO candidates(id,full_name,email,phone,location,source,created_by,received_at,created_at,updated_at,owner_id,notes,consent_status,consent_at,consent_version,portfolio)
@@ -147,10 +152,10 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
       data.consentStatus === 'granted' ? 'recruitment-v2' : null, data.portfolio || '');
     audit(db, cid, actorId, 'candidate.created', { source: data.source, receivedAt: data.receivedAt || time });
     if (data.consentStatus === 'granted') audit(db, cid, actorId, 'consent.granted', { version: 'recruitment-v2', evidence: data.consentEvidence || 'Ứng viên xác nhận trên biểu mẫu công khai.' });
-    addApplication(cid, data, actorId);
+    addApplication(cid, data, actorId, received);
     return cid;
   }
-  function idempotent(req, res, scope, fn) {
+  function idempotent(req, res, scope, fn, status = 200) {
     const key = req.get('Idempotency-Key');
     if (!key || !/^[a-zA-Z0-9_-]{16,100}$/.test(key)) fail(400, 'Thiếu mã yêu cầu hợp lệ. Vui lòng thử gửi lại.');
     const fingerprint = hash(JSON.stringify(req.body) + (req.file ? hash(req.file.buffer) : ''));
@@ -158,14 +163,24 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
     const previous = db.prepare('SELECT * FROM idempotency_keys WHERE key=?').get(scopedKey);
     if (previous) {
       if (previous.request_hash !== fingerprint) fail(409, 'Mã yêu cầu đã được sử dụng với nội dung khác.');
-      return res.json(JSON.parse(previous.response));
+      return res.status(status).json(JSON.parse(previous.response));
     }
-    const result = transaction(db, () => {
-      const response = fn();
-      db.prepare('INSERT INTO idempotency_keys VALUES(?,?,?,?,?)').run(scopedKey, scope, fingerprint, JSON.stringify(response), now());
-      return response;
-    });
-    res.json(result);
+    const createdFiles = [];
+    let result;
+    try {
+      result = transaction(db, () => {
+        const response = fn(createdFiles);
+        db.prepare('INSERT INTO idempotency_keys VALUES(?,?,?,?,?)').run(scopedKey, scope, fingerprint, JSON.stringify(response), now());
+        return response;
+      });
+    } catch (error) {
+      for (const path of createdFiles) {
+        try { rmSync(path, {force:true}); }
+        catch { console.error('Could not remove a new document after rollback. Check storage permissions.'); }
+      }
+      throw error;
+    }
+    res.status(status).json(result);
   }
   function validToken(token) {
     const record = db.prepare('SELECT * FROM update_tokens WHERE token_hash=?').get(hash(token));
@@ -197,7 +212,7 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
     res.clearCookie('sn_session', { path: '/' }); res.json({ ok: true });
   });
   registerInternalRoutes(app, { db, staff, editor, demo, getCandidate, idempotent });
-  registerJobRoutes(app, { db, staff, editor });
+  registerJobRoutes(app, { db, staff, editor, idempotent });
   registerDocumentPreview(app, { db, staff, dataDir });
   registerTranslations(app, { db, staff, editor, dataDir, service:translationService, settingsStore:translationSettingsStore, fetchImpl:translationFetch, demo });
   app.get('/api/v1/candidates', staff, (req, res) => {
@@ -210,7 +225,7 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
     if (!data.fullName && !data.email && !data.phone && !req.file) fail(400, 'Hãy nhập ít nhất một thông tin hoặc tải CV lên.');
     if (data.consentStatus === 'granted' && !data.consentEvidence) fail(400, 'Hãy ghi lại căn cứ xác nhận sự đồng ý của ứng viên.');
     assertJob(data.jobId); assertOwner(data.ownerId);
-    idempotent(req, res, `candidate:${req.user.id}`, () => {
+    idempotent(req, res, `candidate:${req.user.id}`, createdFiles => {
       const matches = duplicateMatches(db, data);
       if (matches.length && !data.resolution) fail(409, 'Phát hiện hồ sơ có thể trùng. HR cần xác nhận trước khi tiếp tục.', { code: 'POSSIBLE_DUPLICATE', matches });
       let cid;
@@ -220,13 +235,13 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
         getCandidate(cid);
         addApplication(cid, data, req.user.id);
         audit(db, cid, req.user.id, 'candidate.linked', { received: data, reason: data.reason || 'HR xác nhận cùng ứng viên. Không ghi đè thông tin cũ.' });
-        db.prepare('UPDATE candidates SET updated_at=? WHERE id=?').run(now(), cid);
+        db.prepare('UPDATE candidates SET updated_at=?,revision=revision+1 WHERE id=?').run(now(), cid);
       } else {
         if (matches.length && data.resolution === 'separate' && data.reason.length < 5) fail(400, 'Cần ghi rõ lý do đây là một ứng viên khác.');
         cid = insertCandidate(data, req.user.id);
         if (matches.length) audit(db, cid, req.user.id, 'duplicate.separate_confirmed', { reason: data.reason, matchedIds: matches.map(m => m.id) });
       }
-      saveFile(req.file, cid, null, req.user.id);
+      saveFile(req.file, cid, null, req.user.id, createdFiles);
       return { candidate: getCandidate(cid) };
     });
   });
@@ -240,32 +255,38 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
     res.json({ ...candidate, history, links, interviews });
   });
   app.patch('/api/v1/candidates/:id', staff, editor, (req, res) => {
-    const data = patchSchema.parse(req.body), previous = getCandidate(req.params.id);
-    if (data.ownerId) assertOwner(data.ownerId);
-    if (data.consentStatus === 'granted' && previous.consent_status !== 'granted' && !data.consentEvidence) fail(400, 'Cần ghi lại căn cứ đồng ý của ứng viên.');
-    const matches = duplicateMatches(db, { email: data.email || previous.email, phone: data.phone || previous.phone }, previous.id);
-    if (matches.length && (data.email !== undefined || data.phone !== undefined)) fail(409, 'Thông tin liên hệ trùng một hồ sơ khác. Hãy xác minh trước khi cập nhật.', { matches });
-    transaction(db, () => {
-      const mapping = { fullName: 'full_name', email: 'email', phone: 'phone', location: 'location', ownerId: 'owner_id', notes: 'notes', portfolio: 'portfolio', consentStatus: 'consent_status' };
+    const data = patchSchema.parse(req.body);
+    const candidate = transaction(db, () => {
+      const previous = getCandidate(req.params.id);
+      if (data.expectedRevision === undefined) fail(428, 'Cần tải phiên bản hồ sơ mới trước khi chỉnh sửa.', {code:'CANDIDATE_REVISION_REQUIRED'});
+      if (data.expectedRevision !== previous.revision) fail(409, 'Hồ sơ đã được người khác cập nhật. Thay đổi của bạn chưa được lưu; bản nháp vẫn được giữ trong biểu mẫu.', {code:'CANDIDATE_CONFLICT'});
+      if (data.ownerId) assertOwner(data.ownerId);
+      if (data.consentStatus === 'granted' && previous.consent_status !== 'granted' && !data.consentEvidence) fail(400, 'Cần ghi lại căn cứ đồng ý của ứng viên.');
+      const matches = duplicateMatches(db, {email:data.email ?? previous.email,phone:data.phone ?? previous.phone}, previous.id);
+      if (matches.length && (data.email !== undefined || data.phone !== undefined)) fail(409, 'Thông tin liên hệ trùng một hồ sơ khác. Hãy xác minh trước khi cập nhật.', {matches});
+      const mapping = {fullName:'full_name',email:'email',phone:'phone',location:'location',ownerId:'owner_id',notes:'notes',portfolio:'portfolio',consentStatus:'consent_status'};
       const changes = {};
-      for (const [key, column] of Object.entries(mapping)) if (data[key] !== undefined) {
+      for (const [key,column] of Object.entries(mapping)) if (data[key] !== undefined) {
         let value = key === 'email' ? normalizeEmail(data[key]) : key === 'phone' ? normalizePhone(data[key]) : data[key];
         if (key === 'ownerId' && !value) value = null;
-        if (previous[column] !== value) { changes[column] = { before: previous[column], after: value }; db.prepare(`UPDATE candidates SET ${column}=? WHERE id=?`).run(value, previous.id); }
+        if (previous[column] !== value) changes[column] = {before:previous[column],after:value};
       }
-      if (data.consentStatus && data.consentStatus !== previous.consent_status) {
-        db.prepare('UPDATE candidates SET consent_at=?,consent_version=? WHERE id=?').run(now(), 'recruitment-v2', previous.id);
-        audit(db, previous.id, req.user.id, `consent.${data.consentStatus}`, { evidence: data.consentEvidence || '', version: 'recruitment-v2' });
+      if (!Object.keys(changes).length) return previous;
+      const columns = Object.keys(changes), values = columns.map(column => changes[column].after);
+      if (changes.consent_status) {
+        columns.push('consent_at','consent_version'); values.push(now(),'recruitment-v2');
+        audit(db, previous.id, req.user.id, `consent.${data.consentStatus}`, {evidence:data.consentEvidence || '',version:'recruitment-v2'});
         if (data.consentStatus === 'withdrawn') db.prepare('UPDATE update_tokens SET revoked_at=? WHERE candidate_id=? AND used_at IS NULL').run(now(), previous.id);
       }
-      db.prepare('UPDATE candidates SET updated_at=? WHERE id=?').run(now(), previous.id);
-      audit(db, previous.id, req.user.id, 'candidate.updated', changes);
+      db.prepare(`UPDATE candidates SET ${columns.map(column => `${column}=?`).join(',')},updated_at=?,revision=revision+1 WHERE id=?`).run(...values,now(),previous.id);
+      audit(db, previous.id, req.user.id, 'candidate.updated', {...changes,revision:previous.revision+1});
+      return getCandidate(previous.id);
     });
-    res.json({ candidate: getCandidate(previous.id) });
+    res.json({candidate});
   });
   app.post('/api/v1/candidates/:id/documents', staff, editor, stagedFiles, (req, res) => {
     getCandidate(req.params.id); if (!req.file) fail(400, 'Hãy chọn một tài liệu.'); validateFile(req.file);
-    idempotent(req, res, `document:${req.user.id}:${req.params.id}`, () => { saveFile(req.file, req.params.id, null, req.user.id); db.prepare('UPDATE candidates SET updated_at=? WHERE id=?').run(now(), req.params.id); return { ok: true }; });
+    idempotent(req, res, `document:${req.user.id}:${req.params.id}`, createdFiles => { saveFile(req.file, req.params.id, null, req.user.id, createdFiles); db.prepare('UPDATE candidates SET updated_at=?,revision=revision+1 WHERE id=?').run(now(), req.params.id); return { ok: true }; });
   });
   app.post('/api/v1/documents/:id/review', staff, editor, (req, res) => {
     const doc = db.prepare('SELECT * FROM documents WHERE id=? AND candidate_id IS NOT NULL').get(req.params.id);
@@ -350,17 +371,17 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
       let cid;
       if (data.resolution === 'link') {
         if (!matches.some(m => m.id === data.targetId)) fail(400, 'Hồ sơ liên kết không nằm trong danh sách gợi ý trùng.');
-        cid = data.targetId; addApplication(cid, payload, req.user.id);
+        cid = data.targetId; addApplication(cid, payload, req.user.id, true);
         // Existing identity, consent, and CVs are deliberately preserved; supplied values remain in the audit trail.
         audit(db, cid, req.user.id, 'candidate.linked', { submissionId: submission.id, received: payload, reason: data.reason });
-      } else cid = insertCandidate({ ...payload, ownerId: req.user.id }, req.user.id);
+      } else cid = insertCandidate({ ...payload, ownerId: req.user.id }, req.user.id, true);
       const docs = db.prepare('SELECT id FROM documents WHERE submission_id=? AND candidate_id IS NULL ORDER BY created_at').all(submission.id);
       for (const doc of docs) {
         const version = db.prepare('SELECT COALESCE(MAX(version),0)+1 AS n FROM documents WHERE candidate_id=?').get(cid).n;
         db.prepare('UPDATE documents SET candidate_id=?,version=? WHERE id=?').run(cid, version, doc.id);
         audit(db, cid, req.user.id, 'document.linked', { documentId: doc.id, version });
       }
-      db.prepare('UPDATE candidates SET updated_at=? WHERE id=?').run(now(), cid);
+      db.prepare('UPDATE candidates SET updated_at=?,revision=revision+1 WHERE id=?').run(now(), cid);
       db.prepare('UPDATE submissions SET status=?,candidate_id=?,resolved_at=?,resolved_by=? WHERE id=?').run(data.resolution === 'link' ? 'linked' : 'separate', cid, now(), req.user.id, submission.id);
       audit(db, cid, req.user.id, 'duplicate.resolved', { submissionId: submission.id, resolution: data.resolution, reason: data.reason });
       return { candidate: getCandidate(cid) };
@@ -369,15 +390,15 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
   app.post('/api/v1/public/applications', stagedFiles, (req, res) => {
     const parsed = publicSchema.parse(req.body);
     if (!req.file) fail(400, 'Vui lòng đính kèm CV.'); validateFile(req.file); assertJob(parsed.jobId);
-    idempotent(req, res, 'public-application', () => {
+    idempotent(req, res, 'public-application', createdFiles => {
       const data = { ...parsed, email: normalizeEmail(parsed.email), phone: normalizePhone(parsed.phone), source: 'Website', receivedAt: now(), consentStatus: 'granted', consentEvidence: 'Ứng viên xác nhận chính sách recruitment-v2 trên website.' };
       const matches = duplicateMatches(db, data);
       if (matches.length) {
         const sid = id();
         db.prepare('INSERT INTO submissions(id,payload,matches,created_at) VALUES(?,?,?,?)').run(sid, JSON.stringify(data), JSON.stringify(matches.map(m => m.id)), now());
-        saveFile(req.file, null, sid, 'public');
+        saveFile(req.file, null, sid, 'public', createdFiles);
         audit(db, null, 'public', 'submission.received_for_review', { submissionId: sid });
-      } else { const cid = insertCandidate(data, 'public'); saveFile(req.file, cid, null, 'public'); }
+      } else { const cid = insertCandidate(data, 'public'); saveFile(req.file, cid, null, 'public', createdFiles); }
       // Same response for new and matched identities: do not expose existing personal data to applicants.
       return { received: true, message: 'Super Net đã nhận được hồ sơ. Đội ngũ HR sẽ kiểm tra và liên hệ với bạn.' };
     });
@@ -386,16 +407,16 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
   app.post('/api/v1/public/update-links/:token', stagedFiles, (req, res) => {
     const data = supplementSchema.parse(req.body); validateFile(req.file);
     if (!req.file && !data.fullName && !data.email && !data.phone && !data.portfolio && !data.notes) fail(400, 'Hãy bổ sung thông tin hoặc một tài liệu.');
-    idempotent(req, res, `supplement:${hash(req.params.token)}`, () => {
+    idempotent(req, res, `supplement:${hash(req.params.token)}`, createdFiles => {
       const record = validToken(req.params.token), candidate = getCandidate(record.candidate_id);
       const provided = { full_name: data.fullName, email: normalizeEmail(data.email), phone: normalizePhone(data.phone), portfolio: data.portfolio };
       // A bearer link may append documents or fill gaps, but cannot silently overwrite an existing identity.
       const conflicts = duplicateMatches(db, data, candidate.id);
       for (const [column, value] of Object.entries(provided)) if (!candidate[column] && value && (!['email','phone'].includes(column) || !conflicts.length)) db.prepare(`UPDATE candidates SET ${column}=? WHERE id=?`).run(value, candidate.id);
-      db.prepare("UPDATE candidates SET consent_status='granted',consent_at=?,consent_version='recruitment-v2',updated_at=? WHERE id=?").run(now(), now(), candidate.id);
+      db.prepare("UPDATE candidates SET consent_status='granted',consent_at=?,consent_version='recruitment-v2',updated_at=?,revision=revision+1 WHERE id=?").run(now(), now(), candidate.id);
       audit(db, candidate.id, 'public', 'candidate.supplemented', { provided, notes: data.notes, contactNeedsReview: conflicts.length > 0, existingValuesPreserved: true });
       audit(db, candidate.id, 'public', 'consent.granted', { version: 'recruitment-v2', evidence: 'Ứng viên xác nhận khi bổ sung hồ sơ.' });
-      saveFile(req.file, candidate.id, null, 'public');
+      saveFile(req.file, candidate.id, null, 'public', createdFiles);
       db.prepare('UPDATE update_tokens SET used_at=? WHERE token_hash=?').run(now(), record.token_hash);
       return { received: true, message: 'Thông tin bổ sung đã được gắn vào hồ sơ của bạn. Cảm ơn bạn!' };
     });
@@ -412,7 +433,7 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
     if (error instanceof multer.MulterError) return res.status(400).json({ message: error.code === 'LIMIT_FILE_SIZE' ? 'Dung lượng tối đa là 10 MB.' : 'Tệp hoặc biểu mẫu vượt quá giới hạn cho phép.' });
     const status = error.status || 500;
     if (status >= 500) console.error('Request failed:', error.message);
-    res.status(status).json({ message: error.publicMessage || (status >= 500 ? 'Hệ thống chưa xử lý được yêu cầu. Vui lòng thử lại.' : error.message), ...(error.code === 'POSSIBLE_DUPLICATE' ? { code: error.code, matches: error.matches } : {}) });
+    res.status(status).json({ message: error.publicMessage || (status >= 500 ? 'Hệ thống chưa xử lý được yêu cầu. Vui lòng thử lại.' : error.message), ...(['POSSIBLE_DUPLICATE','CANDIDATE_CONFLICT','CANDIDATE_REVISION_REQUIRED'].includes(error.code) ? {code:error.code,...(error.matches ? {matches:error.matches} : {})} : {}) });
   });
   return { app, db };
 }

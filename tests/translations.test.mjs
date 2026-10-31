@@ -29,6 +29,12 @@ async function request(path,{session=admin,method='GET',data,form,idem,host=base
   if(session)headers.Cookie=session;
   if(data!==undefined)headers['Content-Type']='application/json';
   if(idem)headers['Idempotency-Key']=idem;
+  // Existing fixtures read the current revision; concurrency regressions use explicit snapshots.
+  if (method === 'POST' && path === '/jobs' && !headers['Idempotency-Key']) headers['Idempotency-Key'] = crypto.randomUUID();
+  if (method === 'PATCH' && /^\/candidates\/[^/]+$/.test(path) && data && data.expectedRevision === undefined) {
+    const latest = await fetch(`${host}/api/v1${path}`,{headers});
+    if (latest.ok) data = {...data,expectedRevision:(await latest.json()).revision};
+  }
   const response=await fetch(`${host}/api/v1${path}`,{method,headers,body:form||(data!==undefined?JSON.stringify(data):undefined)});
   const type=response.headers.get('content-type')||'';
   return {status:response.status,body:type.includes('json')?await response.json():Buffer.from(await response.arrayBuffer()),headers:response.headers};

@@ -22,6 +22,8 @@ npm run dev
 
 Xem [hướng dẫn VS Code và sử dụng](docs/vscode.md), [thiết kế dữ liệu](docs/design.md). Ảnh giao diện dùng dữ liệu kiểm thử: [Trang tuyển dụng](docs/screenshots/careers.png), [JD công khai](docs/screenshots/job-description.png), [Dashboard](docs/screenshots/hr-desktop.png), [Điện thoại](docs/screenshots/hr-mobile.png).
 
+[Bản sửa theo QA ngày 31/10/2026](docs/qa-fixes-2026-10-31.md) bổ sung chống ghi đè hồ sơ giữa hai HR, thử lại tạo JD không sinh trùng, xử lý CV đã nhận khi JD tạm dừng và dọn tệp khi lưu thất bại. Khi sửa hồ sơ từ phiên bản cũ, biểu mẫu báo xung đột và giữ nội dung đang nhập để đối chiếu.
+
 ## Phân quyền
 
 | Chức năng | Admin | Sếp | Người phỏng vấn | HR |

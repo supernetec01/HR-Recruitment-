@@ -192,3 +192,9 @@ Vite phải được khởi động lại sau cập nhật để nạp cấu hì
 Sau reverse proxy HTTPS, đặt `APP_ORIGIN` đúng origin, giữ `X-Forwarded-Host`/`X-Forwarded-Proto` từ proxy và đặt `TRUST_PROXY` chỉ cho proxy thực. Đọc cấu hình trong README. Lỗi nguồn không hợp lệ vẫn được chặn; không bật CORS cho mọi website hay tắt kiểm tra nguồn.
 
 Chữ được tăng 20% ở desktop lẫn điện thoại. Nếu vẫn thấy bản cũ sau khi khởi động lại, tải lại trang bằng Ctrl+F5 (macOS Cmd+Shift+R).
+
+## Khi nhiều HR cùng xử lý hồ sơ
+
+Nếu báo hồ sơ đã được người khác cập nhật, thay đổi của bạn chưa được ghi; nội dung đang nhập vẫn giữ ở biểu mẫu. Dùng **Xem hồ sơ mới trong tab khác để đối chiếu**, kiểm tra thông tin mới rồi bổ sung những phần cần giữ vào phiên bản mới. Đóng tab/biểu mẫu vẫn có thể làm mất nội dung chưa lưu; chưa có lưu nháp tự động.
+
+Cập nhật cả frontend và API cùng phiên bản. Ứng dụng tự nâng cấp database để bảo vệ phiên bản hồ sơ, không cần xóa dữ liệu hay chạy setup lại. Xem [bản sửa QA và thay đổi API](qa-fixes-2026-10-31.md).

@@ -1,0 +1,21 @@
+/* Keep helper text readable without changing the existing 20% text scale. */
+.field small, .helper, .public-form .helper, .muted, .modal-head p,
+.modal-foot > span, .empty p, .profile-meta dt, .contact-list dt,
+.document-info p, .jd-language-note, .translation-date, .form-bottom-note,
+.public-footer {
+  color: #526b7d;
+  font-size: max(12px, calc(10px * var(--text-scale, 1.2)));
+}
+.eyebrow, .modal-head .eyebrow, .detail-hero .eyebrow,
+.application-card .eyebrow, .business-heading > .eyebrow,
+.simple-careers .opportunities .eyebrow, .simple-careers .career-job .eyebrow,
+.public-form > .eyebrow, .public-jd-heading .eyebrow, .supplement-intro .eyebrow {
+  color: #42657d;
+  font-size: max(11px, calc(9px * var(--text-scale, 1.2)));
+}
+.login-brand .eyebrow { color: #bde8f8; font-size: max(11px, calc(9px * var(--text-scale, 1.2))); }
+.field-error { color: #9b3f2a; font-size: max(12px, calc(10px * var(--text-scale, 1.2))); }
+.topbar .icon-button, .row-open { color: #42657d; }
+:is(button, a, input, select, textarea):focus-visible { outline: 3px solid #034969; outline-offset: 3px; }
+.sidebar :focus-visible, .login-brand :focus-visible { outline-color: #bde8f8; }
+.conflict-help { margin: 12px 0 20px; line-height: 1.8; }

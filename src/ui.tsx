@@ -43,22 +43,25 @@ export function Modal({ title, subtitle, children, onClose, wide = false, classN
 export function Field({ label, children, hint, required = false, className = '' }: { label: string; children: ReactNode; hint?: string; required?: boolean; className?: string }) {
   const controlId = useId();
   const control = isValidElement(children) && typeof children.type === 'string' && ['input','select','textarea'].includes(children.type);
-  return <div className={`field ${className}`}>{control ? <label htmlFor={controlId}>{t(label)}{required && <b className="required" aria-hidden="true"> *</b>}</label> : <span>{t(label)}{required && <b className="required" aria-hidden="true"> *</b>}</span>}{control ? cloneElement(children as ReactElement<{ id?: string }>, { id: controlId }) : children}{hint && <small>{t(hint)}</small>}</div>;
+  const describedBy = [control ? (children as ReactElement<{'aria-describedby'?:string}>).props['aria-describedby'] : '',hint ? `${controlId}-hint` : ''].filter(Boolean).join(' ') || undefined;
+  return <div className={`field ${className}`}>{control ? <label htmlFor={controlId}>{t(label)}{required && <b className="required" aria-hidden="true"> *</b>}</label> : <span>{t(label)}{required && <b className="required" aria-hidden="true"> *</b>}</span>}{control ? cloneElement(children as ReactElement<{id?:string;'aria-describedby'?:string}>,{id:controlId,'aria-describedby':describedBy}) : children}{hint && <small id={`${controlId}-hint`}>{t(hint)}</small>}</div>;
 }
 export function Alert({ children, success = false }: { children: ReactNode; success?: boolean }) { return <div className={`alert ${success ? 'success' : ''}`} role={success ? 'status' : 'alert'}>{success ? <Check size={17}/> : <AlertCircle size={17}/>}<span>{children}</span></div>; }
 export function Spinner({ label = 'Đang tải dữ liệu…' }: { label?: string }) { return <div className="loading" role="status"><LoaderCircle size={24} className="spin"/>{t(label)}</div>; }
 export function FileInput({ file, onChange, required = false }: { file: File | null; onChange: (file: File | null) => void; required?: boolean }) {
   const ref = useRef<HTMLInputElement>(null);
+  const errorId = useId();
   const [invalid, setInvalid] = useState('');
   const select = (value: File | null) => {
     const message = value && (value.size > 10 * 1024 * 1024 || value.size === 0) ? 'Chọn tệp không rỗng, tối đa 10 MB.' : '';
     setInvalid(message);
+    ref.current?.setCustomValidity(message ? t(message) : '');
     onChange(message ? null : value);
   };
   return <div className="file-field"><label className={`file-drop ${file ? 'has-file' : ''}`} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); select(e.dataTransfer.files[0] || null); }}>
-    <input ref={ref} type="file" name="file" aria-label={t("Tải CV")} required={required && !file} onChange={e => select(e.target.files?.[0] || null)}/>
+    <input ref={ref} type="file" name="file" aria-label={t("Tải CV")} aria-invalid={invalid ? true : undefined} aria-describedby={invalid ? errorId : undefined} required={required && !file} onChange={e => select(e.target.files?.[0] || null)}/>
     <span className="upload-icon">{file ? <FileText size={24}/> : <UploadCloud size={24}/>}</span><strong>{file ? file.name : t("Chọn tệp hoặc kéo thả CV vào đây")}</strong>
     <span>{file ? t("{p0} KB · Nhấn để thay tệp",{p0:(file.size / 1024).toFixed(0)}) : t("Mọi định dạng · Tối đa 10 MB · Quét mã độc trước khi lưu")}</span>
-  </label><span className="field-error" role="alert">{t(invalid)}</span>{file && <button type="button" className="text-button" onClick={() => { onChange(null); if (ref.current) ref.current.value = ''; }}>{t("Bỏ tệp đã chọn")}</button>}</div>;
+  </label><span className="field-error" role="alert" id={errorId}>{t(invalid)}</span>{(file || invalid) && <button type="button" className="text-button" onClick={() => { select(null); if (ref.current) ref.current.value = ''; }}>{t("Bỏ tệp đã chọn")}</button>}</div>;
 }
 export function Empty({ title, children, icon }: { title: string; children?: ReactNode; icon?: ReactNode }) { return <div className="empty"><div className="empty-icon">{icon || <FileText size={26}/>}</div><h3>{t(title)}</h3><p>{children}</p></div>; }

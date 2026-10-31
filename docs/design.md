@@ -102,3 +102,13 @@ Form upload dùng `multipart/form-data`, một trường file tên `file`, mọi
 Giữ mô hình candidate/application/document khi chuyển sang PostgreSQL và private object storage. Sau đó bổ sung AV worker/quarantine tự động, outbox cho thông báo, đánh giá độc lập theo người phỏng vấn, phê duyệt Boss có lý do và quyền theo resource. Tích hợp dịch đã chuẩn bị với OpenAI; trước vận hành cần cấu hình khóa/model và kiểm tra chất lượng trên dữ liệu phù hợp. Bản dịch tách khỏi CV gốc và dùng để tham khảo khi nhân sự đọc hồ sơ.
 
 Việc xóa theo yêu cầu cá nhân phải xử lý cả file, nội dung nhập, submissions, audit chứa PII, idempotency response, bản dịch và backup theo chính sách hợp lệ. Phiên bản hiện tại chưa có quy trình xóa/retention hoàn chỉnh và chưa tuyên bố tuân thủ pháp luật cho vận hành thật.
+
+## Bảo vệ cập nhật và khôi phục giao dịch
+
+Hồ sơ có cột `revision`, mặc định 1 khi nâng cấp database. `PATCH /candidates/:id` cần `expectedRevision`; kiểm tra sau `BEGIN IMMEDIATE`, rồi cập nhật các trường, consent, audit và tăng revision trong cùng giao dịch. Bản cũ nhận 409, thiếu phiên bản nhận 428. Bổ sung dữ liệu/CV và xác minh trùng cũng tăng revision; giao diện chỉnh sửa và phân công HR gửi đúng snapshot đã đọc. Không tự tải revision mới rồi thử lại bản nháp cũ.
+
+`POST /jobs` dùng `Idempotency-Key` theo người tạo, giữ cả tạo JD, audit và kết quả gửi lại trong cùng giao dịch. Gửi lại cùng mã/nội dung trả lại 201 với cùng ID; nội dung khác bị trả 409. Giao diện giữ mã khi mất phản hồi và thay mã khi đổi nội dung.
+
+Giao dịch tiếp nhận giữ nhật ký riêng các tệp vừa được tạo bằng `open(...,'wx')`. Lỗi ghi, audit hoặc ghi kết quả chống gửi lặp đều rollback database và dọn đúng các tệp mới; không xóa tệp có sẵn. Tệp chỉ được ghi sau khi quét đạt. Luồng xác minh chỉ cho xử lý JD đã đóng/hết hạn từ submission đã được tiếp nhận; không mở lại đăng tuyển hoặc nhận lượt gửi mới.
+
+Xem [đối chiếu QA ngày 31/10/2026](qa-fixes-2026-10-31.md) để biết các ca kiểm thử và công việc còn lại.

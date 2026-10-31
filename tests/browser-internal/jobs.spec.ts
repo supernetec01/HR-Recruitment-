@@ -18,7 +18,7 @@ async function login(page: Page, username: string) {
 }
 
 async function createJob(title: string, status = 'open') {
-  const response = await admin.post('/api/v1/jobs',{data:{title,department:'Marketing',location:'Văn phòng Super Net',openings:2,description,requirements,benefits,businessLine:'safestraps',salaryRange:'Thỏa thuận',workingHours:'Theo lịch làm việc của bộ phận',status}});
+  const response = await admin.post('/api/v1/jobs',{headers:{'Idempotency-Key':crypto.randomUUID()},data:{title,department:'Marketing',location:'Văn phòng Super Net',openings:2,description,requirements,benefits,businessLine:'safestraps',salaryRange:'Thỏa thuận',workingHours:'Theo lịch làm việc của bộ phận',status}});
   expect(response.status()).toBe(201);
   return (await response.json()).job;
 }

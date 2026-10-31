@@ -34,16 +34,17 @@ const fields = {
 };
 const publicFields = 'id,title,department,location,employment_type,description,openings,requirements,benefits,working_hours,salary_range,business_line,application_deadline,company_name,application_instructions,application_email,application_email_subject,application_zalo,created_at,updated_at';
 
-export function registerJobRoutes(app, { db, staff, editor }) {
+export function registerJobRoutes(app, { db, staff, editor, idempotent }) {
   app.get('/api/v1/jobs', staff, (req, res) => res.json(db.prepare(`SELECT j.*, (SELECT COUNT(*) FROM applications a WHERE a.job_id=j.id) AS application_count FROM jobs j ORDER BY created_at DESC,j.rowid DESC`).all()));
   app.post('/api/v1/jobs', staff, editor, (req, res) => {
-    const data = jobSchema.parse(req.body), jid = id(), createdAt = now();
-    transaction(db, () => {
+    const data = jobSchema.parse(req.body);
+    idempotent(req, res, `job:${req.user.id}`, () => {
+      const jid = id(), createdAt = now();
       const columns = Object.values(fields), values = Object.keys(fields).map(key => data[key]);
       db.prepare(`INSERT INTO jobs(id,${columns.join(',')},created_at,updated_at) VALUES(${Array(columns.length + 3).fill('?').join(',')})`).run(jid, ...values, createdAt, createdAt);
       audit(db, null, req.user.id, 'job.created', { jobId: jid, title: data.title, status: data.status, businessLine: data.businessLine });
-    });
-    res.status(201).json({ id: jid, job: db.prepare('SELECT * FROM jobs WHERE id=?').get(jid) });
+      return { id: jid, job: db.prepare('SELECT * FROM jobs WHERE id=?').get(jid) };
+    }, 201);
   });
   app.patch('/api/v1/jobs/:id', staff, editor, (req, res) => {
     const input = z.record(z.string(), z.unknown()).parse(req.body);
