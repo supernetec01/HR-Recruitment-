@@ -1,14 +1,31 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { t } from './locale';
 import { createPortal } from 'react-dom';
-import { Download, Eye, LoaderCircle } from 'lucide-react';
-import { ApiError, errorMessage } from './api';
+import { Download, Eye, LoaderCircle, Trash2 } from 'lucide-react';
+import { api, ApiError, errorMessage, json } from './api';
 import { Alert, Modal, Spinner } from './ui';
 import type { Document } from './types';
 
 const DocumentViewer = lazy(() => import('./document-viewer'));
 
 type CV = Pick<Document, 'id' | 'original_name' | 'mime_type' | 'version'>;
+export function DocumentDeleteDialog({document,candidateId,revision,onClose,onDeleted,onReload}:{document:CV;candidateId:string;revision:number;onClose:()=>void;onDeleted:()=>void;onReload:()=>void}) {
+  const [busy,setBusy] = useState(false), [error,setError] = useState(''), [conflict,setConflict] = useState(false);
+  async function remove() {
+    if (busy) return;
+    setBusy(true);setError('');setConflict(false);
+    try {
+      await api(`/candidates/${encodeURIComponent(candidateId)}/documents/${encodeURIComponent(document.id)}`,{method:'DELETE',body:json({expectedRevision:revision})});
+      onDeleted();
+    } catch(error) {setError(errorMessage(error));setConflict(error instanceof ApiError && [404,409].includes(error.status));}
+    finally {setBusy(false);}
+  }
+  return <Modal title={t('Xóa tài liệu')} subtitle={`${document.original_name} · ${t('Phiên bản ')}${document.version}`} className="document-delete-modal" onClose={()=>!busy && onClose()}>
+    <div className="modal-body"><p>{t('Tài liệu và các bản dịch đã lưu sẽ bị xóa. Bạn không thể hoàn tác thao tác này trong ứng dụng.')}</p><p className="helper">{t('Thông tin ứng viên, lượt ứng tuyển và các tài liệu khác được giữ nguyên. Hành động xóa được ghi vào lịch sử hồ sơ.')}</p>{error && <Alert>{t(error)}</Alert>}{conflict && <button className="text-button" disabled={busy} onClick={onReload}>{t('Tải lại danh sách tài liệu')}</button>}</div>
+    <footer className="modal-foot"><div><button type="button" className="button secondary" disabled={busy} onClick={onClose}>{t('Hủy')}</button><button type="button" className="button danger" disabled={busy} onClick={()=>void remove()}>{busy ? <LoaderCircle size={16} className="spin" aria-hidden="true"/> : <Trash2 size={16} aria-hidden="true"/>}{t(busy?'Đang xóa…':'Xác nhận xóa')}</button></div></footer>
+  </Modal>;
+}
+
 async function fetchFile(document: CV, action: 'preview' | 'download', signal?: AbortSignal) {
   let response: Response;
   try {

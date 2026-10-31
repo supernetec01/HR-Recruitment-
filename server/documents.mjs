@@ -17,13 +17,14 @@ export function extractDocument(path, mime) {
 
 export function registerDocumentPreview(app,{db,staff,dataDir}) {
   const getDocument = value => {
-    const document = db.prepare('SELECT * FROM documents WHERE id=?').get(value);
+    const document = db.prepare('SELECT * FROM documents WHERE id=? AND deleted_at IS NULL').get(value);
     if (!document) throw Object.assign(new Error('Không tìm thấy tài liệu.'),{status:404});
     return document;
   };
   app.get('/api/v1/documents/:id/text',staff,async (req,res) => {
     const document = getDocument(req.params.id);
     const content = await extractDocument(resolve(dataDir,'documents',document.stored_name),document.mime_type);
+    getDocument(document.id); // A delete may have committed while extraction was running.
     audit(db,document.candidate_id,req.user.id,'document.viewed',{documentId:document.id,version:document.version,mode:'text'});
     res.json({...content,documentId:document.id,checksum:document.checksum});
   });

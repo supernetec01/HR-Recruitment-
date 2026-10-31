@@ -73,7 +73,7 @@ export function registerTranslations(app,{db,staff,editor,dataDir,service,settin
   const inFlight = new Map();
   const limiter = rateLimit({windowMs:60000,limit:10,keyGenerator:req => req.user.id,standardHeaders:'draft-8',legacyHeaders:false,message:{message:'Bạn đã gửi nhiều yêu cầu dịch. Vui lòng đợi một phút.'}});
   const document = id => {
-    const doc = db.prepare('SELECT d.*,c.consent_status FROM documents d JOIN candidates c ON c.id=d.candidate_id WHERE d.id=?').get(id);
+    const doc = db.prepare('SELECT d.*,c.consent_status FROM documents d JOIN candidates c ON c.id=d.candidate_id WHERE d.id=? AND d.deleted_at IS NULL').get(id);
     if (!doc) fail(404,'Không tìm thấy tài liệu.');
     return doc;
   };

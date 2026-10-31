@@ -56,7 +56,7 @@ export function registerInternalRoutes(app, { db, staff, editor, demo, getCandid
   });
 
   const requestQuery = `SELECT r.*,c.id AS candidate_id,c.full_name AS candidate_name,c.email,c.phone,c.owner_name,
-    a.job_id,a.stage,j.title AS job_title,u.name AS requested_by_name,d.original_name AS document_name,d.version AS document_version,d.review_status AS document_review_status,
+    a.job_id,a.stage,j.title AS job_title,u.name AS requested_by_name,d.original_name AS document_name,d.version AS document_version,d.review_status AS document_review_status,d.deleted_at AS document_deleted_at,
     preferred.name AS preferred_interviewer_name,
     (SELECT i.id FROM interviews i WHERE i.request_id=r.id AND i.status!='cancelled' ORDER BY i.created_at DESC LIMIT 1) AS interview_id
     FROM interview_requests r JOIN applications a ON a.id=r.application_id
@@ -72,7 +72,7 @@ export function registerInternalRoutes(app, { db, staff, editor, demo, getCandid
       if (['hired','offered','rejected'].includes(application.stage)) problem(409, 'Lượt ứng tuyển đã có quyết định hoặc đã kết thúc.');
       if (db.prepare("SELECT id FROM interview_requests WHERE application_id=? AND status='pending'").get(application.id)) problem(409, 'HR đã có một yêu cầu phỏng vấn đang chờ xử lý cho lượt ứng tuyển này.');
       if (db.prepare("SELECT id FROM interviews WHERE application_id=? AND status='scheduled'").get(application.id)) problem(409, 'Ứng viên đã có lịch phỏng vấn đang chờ.');
-      const document = data.documentId ? db.prepare('SELECT * FROM documents WHERE id=? AND candidate_id=?').get(data.documentId, application.candidate_id) : db.prepare('SELECT * FROM documents WHERE candidate_id=? ORDER BY version DESC LIMIT 1').get(application.candidate_id);
+      const document = data.documentId ? db.prepare('SELECT * FROM documents WHERE id=? AND candidate_id=? AND deleted_at IS NULL').get(data.documentId, application.candidate_id) : db.prepare('SELECT * FROM documents WHERE candidate_id=? AND deleted_at IS NULL ORDER BY version DESC LIMIT 1').get(application.candidate_id);
       if (!document) problem(409, 'Hồ sơ chưa có CV. Hãy bổ sung CV trước khi gửi yêu cầu.');
       if (!db.prepare("SELECT id FROM users WHERE id=? AND id!='public' AND active=1 AND is_demo=? AND role IN ('interviewer','boss','admin')").get(data.interviewerId, demo ? 1 : 0)) problem(400, 'Người phỏng vấn được đề xuất không hợp lệ hoặc đã bị khóa.');
       const rid = id(), created = now();

@@ -1,3 +1,4 @@
+import { registerDocumentDeletion } from './document-deletion.mjs';
 import { registerBrandRoutes } from './company-brands.mjs';
 import express from 'express';
 import helmet from 'helmet';
@@ -78,7 +79,7 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
       LEFT JOIN users u ON u.id=c.owner_id JOIN users creator ON creator.id=c.created_by WHERE c.id=?`).get(cid);
     if (!c) fail(404, 'Không tìm thấy hồ sơ.');
     const applications = db.prepare(`SELECT a.*, j.title AS job_title, j.department FROM applications a JOIN jobs j ON j.id=a.job_id WHERE a.candidate_id=? ORDER BY a.created_at DESC`).all(cid);
-    const documents = db.prepare('SELECT id,original_name,mime_type,size,version,kind,review_status,scan_result,created_at,created_by FROM documents WHERE candidate_id=? ORDER BY created_at DESC,version DESC').all(cid).map(d => ({ ...d, scan: d.scan_result ? JSON.parse(d.scan_result) : null, scan_result: undefined }));
+    const documents = db.prepare('SELECT id,original_name,mime_type,size,version,kind,review_status,scan_result,created_at,created_by FROM documents WHERE candidate_id=? AND deleted_at IS NULL ORDER BY created_at DESC,version DESC').all(cid).map(d => ({ ...d, scan: d.scan_result ? JSON.parse(d.scan_result) : null, scan_result: undefined }));
     return { ...c, tags: JSON.parse(c.tags), applications, documents, ...completeness(c, applications, documents) };
   }
   function staff(req, res, next) {
@@ -216,6 +217,7 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
   registerJobRoutes(app, { db, staff, editor, idempotent });
   registerBrandRoutes(app, { db, staff, idempotent });
   registerDocumentPreview(app, { db, staff, dataDir });
+  registerDocumentDeletion(app, { db, staff, editor, dataDir });
   registerTranslations(app, { db, staff, editor, dataDir, service:translationService, settingsStore:translationSettingsStore, fetchImpl:translationFetch, demo });
   app.get('/api/v1/candidates', staff, (req, res) => {
     const candidates = db.prepare('SELECT id FROM candidates ORDER BY received_at DESC,created_at DESC').all().map(c => getCandidate(c.id));
@@ -291,14 +293,14 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
     idempotent(req, res, `document:${req.user.id}:${req.params.id}`, createdFiles => { saveFile(req.file, req.params.id, null, req.user.id, createdFiles); db.prepare('UPDATE candidates SET updated_at=?,revision=revision+1 WHERE id=?').run(now(), req.params.id); return { ok: true }; });
   });
   app.post('/api/v1/documents/:id/review', staff, editor, (req, res) => {
-    const doc = db.prepare('SELECT * FROM documents WHERE id=? AND candidate_id IS NOT NULL').get(req.params.id);
+    const doc = db.prepare('SELECT * FROM documents WHERE id=? AND candidate_id IS NOT NULL AND deleted_at IS NULL').get(req.params.id);
     if (!doc) fail(404, 'Không tìm thấy tài liệu.');
     const { confirmed, evidence } = z.object({ confirmed: z.literal(true), evidence: z.string().trim().min(10).max(1000) }).parse(req.body);
     transaction(db, () => { db.prepare("UPDATE documents SET review_status='reviewed' WHERE id=?").run(doc.id); audit(db, doc.candidate_id, req.user.id, 'document.reviewed_manually', { documentId: doc.id, evidence, confirmed }); });
     res.json({ ok: true });
   });
   function sendDocument(req, res, next, preview) {
-    const doc = db.prepare('SELECT * FROM documents WHERE id=?').get(req.params.id);
+    const doc = db.prepare('SELECT * FROM documents WHERE id=? AND deleted_at IS NULL').get(req.params.id);
     if (!doc) fail(404, 'Không tìm thấy tài liệu.');
     // Use an ASCII fallback plus the UTF-8 name so proxies/browsers handle Vietnamese filenames.
     const inline = preview && ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/png', 'image/jpeg', 'image/gif', 'image/webp', 'text/plain'].includes(doc.mime_type);
@@ -361,7 +363,7 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
   app.get('/api/v1/submissions', staff, (req, res) => {
     res.json(db.prepare("SELECT * FROM submissions WHERE status='pending' ORDER BY created_at DESC").all().map(s => {
       const payload = JSON.parse(s.payload);
-      return { ...s, payload, matches: duplicateMatches(db, payload), documents: db.prepare('SELECT id,original_name,size,mime_type,version,review_status,scan_result,created_at,kind FROM documents WHERE submission_id=?').all(s.id).map(d => ({ ...d, scan: d.scan_result ? JSON.parse(d.scan_result) : null, scan_result: undefined })) };
+      return { ...s, payload, matches: duplicateMatches(db, payload), documents: db.prepare('SELECT id,original_name,size,mime_type,version,review_status,scan_result,created_at,kind FROM documents WHERE submission_id=? AND deleted_at IS NULL').all(s.id).map(d => ({ ...d, scan: d.scan_result ? JSON.parse(d.scan_result) : null, scan_result: undefined })) };
     }));
   });
   app.post('/api/v1/submissions/:id/resolve', staff, editor, (req, res) => {
@@ -377,7 +379,7 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
         // Existing identity, consent, and CVs are deliberately preserved; supplied values remain in the audit trail.
         audit(db, cid, req.user.id, 'candidate.linked', { submissionId: submission.id, received: payload, reason: data.reason });
       } else cid = insertCandidate({ ...payload, ownerId: req.user.id }, req.user.id, true);
-      const docs = db.prepare('SELECT id FROM documents WHERE submission_id=? AND candidate_id IS NULL ORDER BY created_at').all(submission.id);
+      const docs = db.prepare('SELECT id FROM documents WHERE submission_id=? AND candidate_id IS NULL AND deleted_at IS NULL ORDER BY created_at').all(submission.id);
       for (const doc of docs) {
         const version = db.prepare('SELECT COALESCE(MAX(version),0)+1 AS n FROM documents WHERE candidate_id=?').get(cid).n;
         db.prepare('UPDATE documents SET candidate_id=?,version=? WHERE id=?').run(cid, version, doc.id);
