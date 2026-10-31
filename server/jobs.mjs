@@ -1,3 +1,4 @@
+import { validateJobBrand, withBrand } from './company-brands.mjs';
 import { z } from 'zod';
 import { id, now, audit, transaction } from './db.mjs';
 import { publicJobTranslation } from './translations.mjs';
@@ -21,7 +22,7 @@ const jobSchema = z.object({
   applicationEmail: z.union([z.literal(''), z.string().trim().toLowerCase().max(254).pipe(z.email())]).default(''),
   applicationEmailSubject: z.string().trim().max(200).default(''),
   applicationZalo: z.string().trim().max(30).refine(value => !value || (/^\+?[\d\s().-]+$/.test(value) && value.replace(/\D/g, '').length >= 8 && value.replace(/\D/g, '').length <= 15), 'Số Zalo cần từ 8–15 chữ số.').default(''),
-  businessLine: z.enum(['','safestraps','jielien','baby-tatto']).default(''),
+  businessLine: z.string().trim().max(100).default(''),
   applicationDeadline: z.union([z.literal(''), z.iso.date()]).default(''),
   status: z.enum(['open','closed']).default('open'),
 });
@@ -35,10 +36,11 @@ const fields = {
 const publicFields = 'id,title,department,location,employment_type,description,openings,requirements,benefits,working_hours,salary_range,business_line,application_deadline,company_name,application_instructions,application_email,application_email_subject,application_zalo,created_at,updated_at';
 
 export function registerJobRoutes(app, { db, staff, editor, idempotent }) {
-  app.get('/api/v1/jobs', staff, (req, res) => res.json(db.prepare(`SELECT j.*, (SELECT COUNT(*) FROM applications a WHERE a.job_id=j.id) AS application_count FROM jobs j ORDER BY created_at DESC,j.rowid DESC`).all()));
+  app.get('/api/v1/jobs', staff, (req, res) => res.json(db.prepare(`SELECT j.*, (SELECT COUNT(*) FROM applications a WHERE a.job_id=j.id) AS application_count FROM jobs j ORDER BY created_at DESC,j.rowid DESC`).all().map(job => withBrand(db,job))));
   app.post('/api/v1/jobs', staff, editor, (req, res) => {
     const data = jobSchema.parse(req.body);
     idempotent(req, res, `job:${req.user.id}`, () => {
+      validateJobBrand(db,data.businessLine);
       const jid = id(), createdAt = now();
       const columns = Object.values(fields), values = Object.keys(fields).map(key => data[key]);
       db.prepare(`INSERT INTO jobs(id,${columns.join(',')},created_at,updated_at) VALUES(${Array(columns.length + 3).fill('?').join(',')})`).run(jid, ...values, createdAt, createdAt);
@@ -60,6 +62,7 @@ export function registerJobRoutes(app, { db, staff, editor, idempotent }) {
       }
       const previous = Object.fromEntries(Object.entries(fields).map(([key,column]) => [key,current[column]]));
       const data = jobSchema.parse({ ...previous, ...Object.fromEntries(keys.map(key => [key,input[key]])) });
+      validateJobBrand(db,data.businessLine,current.business_line);
       const changes = {};
       for (const key of keys) if (data[key] !== current[fields[key]]) changes[fields[key]] = { before: current[fields[key]], after: data[key] };
       if (Object.keys(changes).length) {
@@ -71,10 +74,10 @@ export function registerJobRoutes(app, { db, staff, editor, idempotent }) {
     });
     res.json({ ok: true, job: result });
   });
-  app.get('/api/v1/public/jobs', (req, res) => res.json(db.prepare(`SELECT ${publicFields},revision FROM jobs WHERE ${openJobCondition} ORDER BY created_at DESC,rowid DESC`).all(todayInVietnam()).map(job => publicJobTranslation(db,job,req.query.language))));
+  app.get('/api/v1/public/jobs', (req, res) => res.json(db.prepare(`SELECT ${publicFields},revision FROM jobs WHERE ${openJobCondition} ORDER BY created_at DESC,rowid DESC`).all(todayInVietnam()).map(job => publicJobTranslation(db,withBrand(db,job),req.query.language))));
   app.get('/api/v1/public/jobs/:id', (req, res) => {
     const job = db.prepare(`SELECT ${publicFields},revision FROM jobs WHERE id=? AND ${openJobCondition}`).get(req.params.id, todayInVietnam());
     if (!job) failure(404, 'Tin tuyển dụng không tồn tại, đã tạm dừng hoặc đã hết hạn nhận hồ sơ.');
-    res.json(publicJobTranslation(db,job,req.query.language));
+    res.json(publicJobTranslation(db,withBrand(db,job),req.query.language));
   });
 }

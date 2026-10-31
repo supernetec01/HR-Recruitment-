@@ -1,3 +1,4 @@
+import { CompanyShowcase, useCompanyBrands } from './company-brands';
 import { t, LanguageSwitcher, useLanguage } from './locale';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -5,7 +6,7 @@ import { ArrowLeft, ArrowRight, ArrowUpRight, Check, CheckCircle2, Clock3, MapPi
 import { api, date, errorMessage, key } from './api';
 import { Alert, Empty, Field, FileInput, Spinner } from './ui';
 import type { Job } from './types';
-import { JOB_BRANDS, brandName, jobPath } from './jobs';
+import { jobPath } from './jobs';
 export function Brand({ light = false }: {
     light?: boolean;
 }) {
@@ -17,6 +18,7 @@ export function PublicHeader() {
 export function PrivacyNotice() { return <details className="privacy-notice"><summary><ShieldCheck size={16}/>{t("Thông báo xử lý dữ liệu tuyển dụng")}</summary><p>{t("Super Net tiếp nhận thông tin liên hệ, CV và portfolio để xem xét vị trí ứng tuyển, liên hệ, tổ chức phỏng vấn và lưu lịch sử xử lý trong quy trình tuyển dụng. Chỉ nhân sự được phân quyền mới được truy cập hồ sơ.")}</p><p>{t("Hệ thống không tự động ra quyết định tuyển dụng. Tài liệu mới được cách ly để kiểm tra. Thông tin không được dùng để gửi quảng cáo. Bạn có thể liên hệ HR đã trao đổi với bạn để yêu cầu xem, sửa, rút lại sự đồng ý hoặc xóa dữ liệu.")}</p><p>{t("Vui lòng liên hệ HR phụ trách để được thông báo thời hạn lưu hồ sơ hoặc gửi yêu cầu chỉnh sửa, rút lại sự đồng ý và xóa dữ liệu. Hệ thống chưa tự động thực hiện việc xóa hồ sơ theo thời hạn; các yêu cầu này cần HR tiếp nhận và xử lý. Nếu nhân sự sử dụng chức năng dịch, nội dung CV có thể được gửi tới dịch vụ OpenAI do Super Net cấu hình để tạo bản dịch phục vụ tuyển dụng. Phiên bản thông báo: recruitment-v2.")}</p></details>; }
 export function Careers() {
     const language = useLanguage();
+    const {brands, error:brandError, reload:reloadBrands} = useCompanyBrands();
     const [jobs, setJobs] = useState<Job[]>([]), [loaded, setLoaded] = useState(false), [error, setError] = useState(''), [search, setSearch] = useState(''), [brand, setBrand] = useState('');
     async function loadJobs() {
         setLoaded(false);
@@ -33,23 +35,25 @@ export function Careers() {
     }
     useEffect(() => { void loadJobs(); }, [language]);
     const normalize = (value: string) => value.toLocaleLowerCase('vi').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
-    const filtered = jobs.filter(job => (!brand || job.business_line === brand) && normalize(`${job.title} ${job.department} ${brandName(job.business_line)}`).includes(normalize(search)));
+    const filtered = jobs.filter(job => (!brand || job.business_line === brand) && normalize(`${job.title} ${job.department} ${(job.brand_name || 'Super Net')}`).includes(normalize(search)));
+    const filterBrands = [...brands];
+    for (const job of jobs) if (job.business_line && job.brand_name && !filterBrands.some(item => item.id === job.business_line)) filterBrands.push({id:job.business_line,name:job.brand_name,category:'',description:'',channels:[],logoUrl:'',sortOrder:0});
     return <div className="public-page simple-careers"><PublicHeader /><main className="careers-main">
     <header className="careers-heading"><div><h1>{t("Tuy\u1EC3n d\u1EE5ng t\u1EA1i Super Net")}</h1><p>{t("Th\u00F4ng tin c\u00F4ng vi\u1EC7c v\u00E0 c\u00E1c v\u1ECB tr\u00ED \u0111ang tuy\u1EC3n.")}</p></div>{loaded && !error && <span className="careers-total"><strong>{jobs.length}</strong>{t(" v\u1ECB tr\u00ED \u0111ang tuy\u1EC3n")}</span>}</header>
     <section id="opportunities" className="opportunities" aria-label={t("Danh s\u00E1ch v\u1ECB tr\u00ED tuy\u1EC3n d\u1EE5ng")}>
-      <div className="career-filters"><label className="search-input"><Search size={19}/><input aria-label={t("T\u00ECm v\u1ECB tr\u00ED tuy\u1EC3n d\u1EE5ng")} placeholder={t("T\u00ECm v\u1ECB tr\u00ED ho\u1EB7c b\u1ED9 ph\u1EADn")} value={search} onChange={event => setSearch(event.target.value)}/></label><select aria-label={t("L\u1ECDc ng\u00E0nh h\u00E0ng tuy\u1EC3n d\u1EE5ng")} value={brand} onChange={event => setBrand(event.target.value)}><option value="">{t("T\u1EA5t c\u1EA3 ng\u00E0nh h\u00E0ng")}</option>{JOB_BRANDS.map(item => <option value={item.id} key={item.id}>{item.name}{t(" \u00B7 ")}{t(item.category)}</option>)}</select></div>
-      {loaded && !error && <div className="career-results"><span>{filtered.length}{t(" v\u1ECB tr\u00ED")}{brand ? ` · ${brandName(brand)}` : ''}</span>{(search || brand) && <button className="text-button" onClick={() => { setSearch(''); setBrand(''); }}>{t("X\u00F3a b\u1ED9 l\u1ECDc")}</button>}</div>}
+      <div className="career-filters"><label className="search-input"><Search size={19}/><input aria-label={t("T\u00ECm v\u1ECB tr\u00ED tuy\u1EC3n d\u1EE5ng")} placeholder={t("T\u00ECm v\u1ECB tr\u00ED ho\u1EB7c b\u1ED9 ph\u1EADn")} value={search} onChange={event => setSearch(event.target.value)}/></label><select aria-label={t("L\u1ECDc ng\u00E0nh h\u00E0ng tuy\u1EC3n d\u1EE5ng")} value={brand} onChange={event => setBrand(event.target.value)}><option value="">{t("T\u1EA5t c\u1EA3 ng\u00E0nh h\u00E0ng")}</option>{filterBrands.map(item => <option value={item.id} key={item.id}>{item.name}{item.category ? ` · ${item.category}` : ''}</option>)}</select></div>
+      {loaded && !error && <div className="career-results"><span>{filtered.length}{t(" v\u1ECB tr\u00ED")}{brand ? ` · ${(brands.find(item => item.id === brand)?.name || jobs.find(job => job.business_line === brand)?.brand_name || '')}` : ''}</span>{(search || brand) && <button className="text-button" onClick={() => { setSearch(''); setBrand(''); }}>{t("X\u00F3a b\u1ED9 l\u1ECDc")}</button>}</div>}
       {!loaded ? <Spinner /> : error ? <div className="careers-error"><Alert>{t(error)}</Alert><button className="button secondary" onClick={() => void loadJobs()}>{t("Th\u1EED t\u1EA3i l\u1EA1i v\u1ECB tr\u00ED tuy\u1EC3n d\u1EE5ng")}</button></div> : filtered.length ? <div className="career-jobs">
         <div className="career-columns" aria-hidden="true"><span>{t("V\u1ECB tr\u00ED tuy\u1EC3n d\u1EE5ng")}</span><span>{t("\u0110\u1ECBa \u0111i\u1EC3m")}</span><span>{t("M\u1EE9c l\u01B0\u01A1ng")}</span><span /></div>
         {filtered.map(job => <Link className="career-job" to={jobPath(job.id)} key={job.id}>
-          <div className="career-job-info"><h2>{job.title}</h2><p>{job.department}<span aria-hidden="true">{t("\u00B7")}</span>{brandName(job.business_line)}</p><span className="career-employment">{job.employment_type}</span></div>
+          <div className="career-job-info"><h2>{job.title}</h2><p>{job.department}<span aria-hidden="true">{t("\u00B7")}</span>{(job.brand_name || 'Super Net')}</p><span className="career-employment">{job.employment_type}</span></div>
           <div className="career-location"><MapPin size={16}/><span>{job.location}</span></div>
           <div className="career-salary"><Wallet size={16}/><span>{job.salary_range || t('Chưa cập nhật')}</span></div>
           <div className="career-job-end"><span>{job.openings}{t(" ng\u01B0\u1EDDi")}</span><strong>{t("Xem JD")}<ArrowRight size={17}/></strong></div>
         </Link>)}
-      </div> : <Empty title={jobs.length ? t("Kh\u00F4ng t\u00ECm th\u1EA5y v\u1ECB tr\u00ED ph\u00F9 h\u1EE3p") : t("Ch\u01B0a c\u00F3 v\u1ECB tr\u00ED \u0111ang tuy\u1EC3n")}>{jobs.length ? t("Th\u1EED t\u1EEB kh\u00F3a ho\u1EB7c ng\u00E0nh h\u00E0ng kh\u00E1c.") : t("Danh s\u00E1ch s\u1EBD \u0111\u01B0\u1EE3c c\u1EADp nh\u1EADt khi c\u00F3 v\u1ECB tr\u00ED m\u1EDBi.")}</Empty>}
+      </div> : <Empty headingLevel={2} title={jobs.length ? t("Kh\u00F4ng t\u00ECm th\u1EA5y v\u1ECB tr\u00ED ph\u00F9 h\u1EE3p") : t("Ch\u01B0a c\u00F3 v\u1ECB tr\u00ED \u0111ang tuy\u1EC3n")}>{jobs.length ? t("Th\u1EED t\u1EEB kh\u00F3a ho\u1EB7c ng\u00E0nh h\u00E0ng kh\u00E1c.") : t("Danh s\u00E1ch s\u1EBD \u0111\u01B0\u1EE3c c\u1EADp nh\u1EADt khi c\u00F3 v\u1ECB tr\u00ED m\u1EDBi.")}</Empty>}
     </section>
-    <nav className="careers-stores" aria-label={t("Gian h\u00E0ng Shopee")}><span>{t("Gian h\u00E0ng Shopee")}</span>{JOB_BRANDS.map(item => <a href={item.storeUrl} target="_blank" rel="noopener noreferrer" key={item.id}>{item.name}<ArrowUpRight size={14}/></a>)}</nav>
+    <CompanyShowcase brands={brands} error={brandError} onRetry={() => void reloadBrands()}/>
   </main><PublicFooter /></div>;
 }
 export function PublicFooter() {
@@ -70,7 +74,7 @@ export function ApplicationPage() {
             setLoaded(true); });
         return () => { active = false; };
     }, [jobId, language]);
-    return <div className="public-page"><PublicHeader /><main className="application-page"><Link className="back-link" to="/tuyen-dung"><ArrowLeft size={16}/>{t("T\u1EA5t c\u1EA3 v\u1ECB tr\u00ED tuy\u1EC3n d\u1EE5ng")}</Link>{!loaded ? <Spinner /> : !job ? <Alert>{error || 'Vị trí này đã ngừng tuyển hoặc không tồn tại.'}</Alert> : <div className="application-layout"><aside className="application-summary"><span className="application-department">{job.department}{t(" \u00B7 ")}{brandName(job.business_line)}</span><h1>{job.title}</h1><div className="job-facts"><span><MapPin size={16}/>{job.location}</span><span><Clock3 size={16}/>{job.employment_type}</span><span><UsersRound size={16}/>{job.openings}{t(" ng\u01B0\u1EDDi")}</span>{job.salary_range && <span><Wallet size={16}/>{job.salary_range}</span>}</div><Link className="text-button application-jd-link" to={jobPath(job.id)}>{t("Xem m\u00F4 t\u1EA3 c\u00F4ng vi\u1EC7c")}<ArrowUpRight size={15}/></Link></aside><PublicIntakeForm job={job}/></div>}</main><PublicFooter /></div>;
+    return <div className="public-page"><PublicHeader /><main className="application-page"><Link className="back-link" to="/tuyen-dung"><ArrowLeft size={16}/>{t("T\u1EA5t c\u1EA3 v\u1ECB tr\u00ED tuy\u1EC3n d\u1EE5ng")}</Link>{!loaded ? <Spinner /> : !job ? <Alert>{error || 'Vị trí này đã ngừng tuyển hoặc không tồn tại.'}</Alert> : <div className="application-layout"><aside className="application-summary"><span className="application-department">{job.department}{t(" \u00B7 ")}{(job.brand_name || 'Super Net')}</span><h1>{job.title}</h1><div className="job-facts"><span><MapPin size={16}/>{job.location}</span><span><Clock3 size={16}/>{job.employment_type}</span><span><UsersRound size={16}/>{job.openings}{t(" ng\u01B0\u1EDDi")}</span>{job.salary_range && <span><Wallet size={16}/>{job.salary_range}</span>}</div><Link className="text-button application-jd-link" to={jobPath(job.id)}>{t("Xem m\u00F4 t\u1EA3 c\u00F4ng vi\u1EC7c")}<ArrowUpRight size={15}/></Link></aside><PublicIntakeForm job={job}/></div>}</main><PublicFooter /></div>;
 }
 function PublicIntakeForm({ job }: {
     job: Job;

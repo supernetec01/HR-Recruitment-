@@ -54,7 +54,9 @@ Cổng `/tuyen-dung` cho ứng viên tự gửi; nghi trùng được đưa vào
 
 ## Đăng JD và trang tuyển dụng công khai
 
-Trang `/tuyen-dung` hiển thị danh sách vị trí và bộ lọc ba ngành hàng: **phụ kiện xe Safestraps**, **thiết bị âm thanh JieLien**, **Mẹ và Bé Baby tatto**; mỗi vị trí có thông tin địa điểm, hình thức, mức lương và số người cần tuyển.
+Trang `/tuyen-dung` hiển thị danh sách vị trí và bộ lọc thương hiệu từ database; mỗi vị trí có thông tin địa điểm, hình thức, mức lương và số người cần tuyển. Ba thương hiệu ban đầu là **phụ kiện xe Safestraps**, **thiết bị âm thanh JieLien**, **Mẹ và Bé Baby tatto**.
+
+Bên dưới danh sách việc làm là các thẻ **Thương hiệu & kênh bán hàng**, gồm logo, mô tả và nút mở từng gian hàng. Admin vào **Thương hiệu & cửa hàng** để thêm/sửa/xóa thương hiệu, thay/gỡ logo, quản lý nhiều kênh, ẩn/hiện và sắp xếp thứ tự. Thương hiệu mới tự xuất hiện trong form JD. Xem [hướng dẫn thương hiệu và cửa hàng](docs/brands-and-stores.md).
 
 Admin/HR vào **Vị trí tuyển dụng → Tạo JD tuyển dụng**. Biểu mẫu chia thành Thông tin chung, Nội dung công việc, Cách thức ứng tuyển và Đăng tuyển; nhập tên công ty, vị trí, bộ phận, ngành hàng, số lượng, hình thức, địa chỉ đầy đủ, mức lương, giờ làm, mô tả, yêu cầu, quyền lợi, hướng dẫn ứng tuyển, email nhận CV, tiêu đề email, Zalo và hạn nhận hồ sơ. Dùng **Xem trước JD** để kiểm tra trước khi lưu. Nội dung xuống dòng được giữ nguyên; các dòng bắt đầu bằng “-”/“•” hiển thị dạng danh sách.
 

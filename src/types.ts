@@ -2,7 +2,7 @@ export type User = { id: string; name: string; username?: string; email?: string
 export type Job = {
   id: string; title: string; department: string; location: string; employment_type: string; description: string;
   openings: number; status?: string; application_count?: number; requirements?: string; benefits?: string;
-  working_hours?: string; salary_range?: string; business_line?: string; application_deadline?: string;
+  working_hours?: string; salary_range?: string; business_line?: string; brand_name?: string; application_deadline?: string;
   created_at?: string; updated_at?: string; revision?: number;
   translation_available?: boolean; content_language?: string;
   company_name?: string; application_instructions?: string; application_email?: string; application_email_subject?: string; application_zalo?: string;

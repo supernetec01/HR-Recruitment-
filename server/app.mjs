@@ -1,3 +1,4 @@
+import { registerBrandRoutes } from './company-brands.mjs';
 import express from 'express';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -213,6 +214,7 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
   });
   registerInternalRoutes(app, { db, staff, editor, demo, getCandidate, idempotent });
   registerJobRoutes(app, { db, staff, editor, idempotent });
+  registerBrandRoutes(app, { db, staff, idempotent });
   registerDocumentPreview(app, { db, staff, dataDir });
   registerTranslations(app, { db, staff, editor, dataDir, service:translationService, settingsStore:translationSettingsStore, fetchImpl:translationFetch, demo });
   app.get('/api/v1/candidates', staff, (req, res) => {

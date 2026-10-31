@@ -64,4 +64,4 @@ export function FileInput({ file, onChange, required = false }: { file: File | n
     <span>{file ? t("{p0} KB · Nhấn để thay tệp",{p0:(file.size / 1024).toFixed(0)}) : t("Mọi định dạng · Tối đa 10 MB · Quét mã độc trước khi lưu")}</span>
   </label><span className="field-error" role="alert" id={errorId}>{t(invalid)}</span>{(file || invalid) && <button type="button" className="text-button" onClick={() => { select(null); if (ref.current) ref.current.value = ''; }}>{t("Bỏ tệp đã chọn")}</button>}</div>;
 }
-export function Empty({ title, children, icon }: { title: string; children?: ReactNode; icon?: ReactNode }) { return <div className="empty"><div className="empty-icon">{icon || <FileText size={26}/>}</div><h3>{t(title)}</h3><p>{children}</p></div>; }
+export function Empty({ title, children, icon, headingLevel = 3 }: { title: string; children?: ReactNode; icon?: ReactNode; headingLevel?: 2 | 3 }) { const Heading = headingLevel === 2 ? 'h2' : 'h3'; return <div className="empty"><div className="empty-icon">{icon || <FileText size={26}/>}</div><Heading>{t(title)}</Heading><p>{children}</p></div>; }

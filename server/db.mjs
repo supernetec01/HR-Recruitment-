@@ -1,3 +1,4 @@
+import { initializeBrands } from './brand-data.mjs';
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync, chmodSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -163,6 +164,7 @@ export function openDatabase(directory, demo = false) {
     db.prepare('INSERT INTO users(id,name,email,role) VALUES (?,?,?,?)').run('public', 'Ứng viên', 'public@system.invalid', 'hr');
   }
   if (demo && !db.prepare('SELECT id FROM users WHERE is_demo=1 LIMIT 1').get()) seedDemo(db, directory);
+  initializeBrands(db);
   return db;
 }
 

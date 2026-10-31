@@ -16,6 +16,8 @@
 .login-brand .eyebrow { color: #bde8f8; font-size: max(11px, calc(9px * var(--text-scale, 1.2))); }
 .field-error { color: #9b3f2a; font-size: max(12px, calc(10px * var(--text-scale, 1.2))); }
 .topbar .icon-button, .row-open { color: #42657d; }
+.topbar .today { color: #526b7d; }
+.topbar-actions > .avatar { color: #635130; }
 :is(button, a, input, select, textarea):focus-visible { outline: 3px solid #034969; outline-offset: 3px; }
 .sidebar :focus-visible, .login-brand :focus-visible { outline-color: #bde8f8; }
 .conflict-help { margin: 12px 0 20px; line-height: 1.8; }

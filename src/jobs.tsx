@@ -1,20 +1,14 @@
 import { t } from './locale';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, Baby, BriefcaseBusiness, CarFront, Check, Clock3, Copy, ExternalLink, Headphones, MapPin, Pencil, Plus, Search } from 'lucide-react';
+import { ArrowUpRight, BriefcaseBusiness, Check, Clock3, Copy, ExternalLink, MapPin, Pencil, Plus, Search } from 'lucide-react';
 import { api, date, dayKey, errorMessage, json } from './api';
 import { Alert, Empty, Field, Modal } from './ui';
 import type { Job } from './types';
 import { JobTranslationModal } from './translation';
 
-export const JOB_BRANDS = [
-  { id: 'safestraps', name: 'Safestraps', category: 'Phụ kiện xe', Icon: CarFront, storeUrl: 'https://shopee.vn/safestraps?entryPoint=ShopBySearch&searchKeyword=safestraps' },
-  { id: 'jielien', name: 'JieLien', category: 'Loa & thiết bị âm thanh', Icon: Headphones, storeUrl: 'https://vn.shp.ee/2ZrUpPRj' },
-  { id: 'baby-tatto', name: 'Baby tatto', category: 'Mẹ và Bé', Icon: Baby, storeUrl: 'https://shopee.vn/babytattoo?categoryId=100632&entryPoint=ShopByPDP&itemId=20716712617' },
-] as const;
 export const EMPLOYMENT_TYPES = ['Toàn thời gian','Bán thời gian','Thực tập','Cộng tác viên','Hợp đồng'];
 export const jobPath = (id: string) => `/tuyen-dung/${encodeURIComponent(id)}`;
-export const brandName = (id?: string) => JOB_BRANDS.find(brand => brand.id === id)?.name || 'Super Net';
 export const jobExpired = (job: Job) => !!job.application_deadline && job.application_deadline < dayKey();
 
 function JDText({ text }: { text: string }) {
@@ -53,7 +47,7 @@ export function ShareJobLink({ job, onClose }: { job: Job; onClose: () => void }
 export function JobsManager({ jobs, editable, onAdd, onEdit, onRefresh, notify }: { jobs: Job[]; editable: boolean; onAdd: () => void; onEdit: (job: Job) => void; onRefresh: () => void; notify: (message: string) => void }) {
   const [search, setSearch] = useState(''), [status, setStatus] = useState('all'), [share, setShare] = useState<Job | null>(null), [busy, setBusy] = useState<string | null>(null);
   const [translationJob,setTranslationJob] = useState<Job | null>(null);
-  const filtered = jobs.filter(job => `${job.title} ${job.department} ${brandName(job.business_line)}`.toLocaleLowerCase('vi').includes(search.toLocaleLowerCase('vi')) && (status === 'all' || (status === 'expired' ? jobExpired(job) : job.status === status && !jobExpired(job))));
+  const filtered = jobs.filter(job => `${job.title} ${job.department} ${(job.brand_name || 'Super Net')}`.toLocaleLowerCase('vi').includes(search.toLocaleLowerCase('vi')) && (status === 'all' || (status === 'expired' ? jobExpired(job) : job.status === status && !jobExpired(job))));
   async function toggle(job: Job) {
     setBusy(job.id);
     try { await api(`/jobs/${job.id}`, { method: 'PATCH', body: json({ status: job.status === 'open' ? 'closed' : 'open', expectedRevision: job.revision }) }); onRefresh(); notify(job.status === 'open' ? 'Đã tạm dừng tin tuyển dụng.' : 'Đã mở tin tuyển dụng.'); }
@@ -65,7 +59,7 @@ export function JobsManager({ jobs, editable, onAdd, onEdit, onRefresh, notify }
     <div className="jobs-grid">{filtered.map((job,index) => {
       const visible = job.status === 'open' && !jobExpired(job);
       return <article className="panel job-card" key={job.id}><div className="job-card-top"><span className={`job-symbol job-symbol-${index % 4}`}><BriefcaseBusiness size={23}/></span><span className={`stage ${jobExpired(job) ? 'amber' : visible ? 'green' : 'gray'}`}><span/>{jobExpired(job) ? t("Hết hạn") : visible ? t("Đang tuyển") : t("Tạm dừng")}</span></div>
-        <span className="eyebrow">{job.department} · {brandName(job.business_line)}</span><h2>{job.title}</h2><p className="job-location"><MapPin size={13}/>{job.location} · {job.employment_type}</p><p className="job-description">{job.description}</p>
+        <span className="eyebrow">{job.department} · {(job.brand_name || 'Super Net')}</span><h2>{job.title}</h2><p className="job-location"><MapPin size={13}/>{job.location} · {job.employment_type}</p><p className="job-description">{job.description}</p>
         <div className="job-card-stats"><span><BriefcaseBusiness size={16}/><b>{job.application_count || 0}</b>{t(" lượt ứng tuyển")}</span><span>{t("Cần tuyển ")}<b>{job.openings}</b></span></div>{job.application_deadline && <p className="jd-deadline"><Clock3 size={13}/>{t("Hạn nhận hồ sơ: ")}{date(`${job.application_deadline}T00:00:00+07:00`)}</p>}
         <footer className="jd-card-actions">{visible ? <><Link className="text-button" to={jobPath(job.id)} target="_blank">{t("Xem JD")}<ArrowUpRight size={16}/></Link><button className="icon-button" aria-label={t("Chia sẻ JD {p0}",{p0:job.title})} title={t("Chia sẻ liên kết JD")} onClick={() => setShare(job)}><Copy size={16}/></button></> : <span className="muted">{t("Tin đang ẩn khỏi trang công khai")}</span>}{editable && <button className="button secondary small-button" onClick={() => onEdit(job)}><Pencil size={14}/>{t("Chỉnh sửa JD")}</button>}{editable && <button className="text-button" onClick={() => setTranslationJob(job)}>{t("Dịch JD 中文")}</button>}</footer>
         {editable && <div className="jd-card-status"><span>{t("Ứng viên xem được khi tin đang tuyển và còn hạn.")}</span><button className="text-button" disabled={busy === job.id} onClick={() => void toggle(job)}>{busy === job.id ? t("Đang lưu…") : job.status === 'open' ? t("Tạm dừng") : t("Mở lại")}</button></div>}

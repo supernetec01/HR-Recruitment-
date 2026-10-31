@@ -1,9 +1,10 @@
+import { useCompanyBrands } from './company-brands';
 import { t } from './locale';
 import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Check, Eye, FilePlus2, Mail, Pencil } from 'lucide-react';
 import { api, errorMessage, json, key } from './api';
 import { Alert, Field, Modal } from './ui';
-import { EMPLOYMENT_TYPES, JDContent, JOB_BRANDS } from './jobs';
+import { EMPLOYMENT_TYPES, JDContent } from './jobs';
 import { CONTENT_MARKETING_JD } from './jd-template';
 import type { Job } from './types';
 
@@ -19,6 +20,7 @@ const initialDraft = (job?: Job) => ({
 });
 
 export function JobForm({ existing, onClose, onSaved }: { existing?: Job; onClose: () => void; onSaved: () => void }) {
+  const {brands, error:brandsError, reload:reloadBrands} = useCompanyBrands('staff');
   const [draft, setDraft] = useState(() => initialDraft(existing));
   const requestKey = useRef(key());
   const [view, setView] = useState<'edit' | 'preview'>('edit');
@@ -37,12 +39,13 @@ export function JobForm({ existing, onClose, onSaved }: { existing?: Job; onClos
     <form className="jd-editor" onSubmit={submit} noValidate>
       <div className="jd-editor-tools"><div role="tablist" aria-label={t("Chế độ biên soạn JD")}><button type="button" role="tab" aria-selected={view === 'edit'} onClick={() => setView('edit')}><Pencil size={16}/>{t("Nhập thông tin")}</button><button type="button" role="tab" aria-selected={view === 'preview'} onClick={() => setView('preview')}><Eye size={16}/>{t("Xem trước JD")}</button></div>{!existing && <button type="button" className="text-button" disabled={busy} onClick={() => { requestKey.current = key(); setDraft(previous => ({ ...previous, ...CONTENT_MARKETING_JD })); setView('edit'); }}><FilePlus2 size={16}/>{t("Điền mẫu Content Marketing")}</button>}</div>
       <div className="modal-body">
+        {brandsError && <Alert>{t(brandsError)} <button type="button" className="text-button" onClick={() => void reloadBrands()}>{t("Thử lại")}</button></Alert>}
         <div className="jd-editor-fields" hidden={view !== 'edit'}>
           <section className="jd-editor-section" aria-labelledby="jd-general-heading"><h3 id="jd-general-heading"><span>01</span>{t("Thông tin chung")}</h3><div className="form-grid">
             <Field label={t("Tên công ty")} className="full"><input {...bind('companyName')} maxLength={200}/></Field>
             <Field label={t("Tên vị trí")} className="full" required><input {...bind('title')} required minLength={2} maxLength={120} placeholder={t("Ví dụ: Chuyên viên Content Marketing")}/></Field>
             <Field label={t("Bộ phận")} required><input {...bind('department')} required maxLength={120} placeholder={t("Marketing")}/></Field>
-            <Field label={t("Ngành hàng")}><select {...bind('businessLine')}><option value="">{t("Chung · Super Net")}</option>{JOB_BRANDS.map(brand => <option value={brand.id} key={brand.id}>{t(brand.name)} · {t(brand.category)}</option>)}</select></Field>
+            <Field label={t("Ngành hàng")}><select {...bind('businessLine')}><option value="">{t("Chung · Super Net")}</option>{draft.businessLine && !brands.some(brand => brand.id === draft.businessLine) && <option value={draft.businessLine}>{existing?.brand_name || draft.businessLine}</option>}{brands.map(brand => <option value={brand.id} key={brand.id}>{brand.name}{brand.category ? ` · ${brand.category}` : ''}</option>)}</select></Field>
             <Field label={t("Số lượng cần tuyển")} required><input {...bind('openings')} type="number" min={1} max={1000} required/></Field>
             <Field label={t("Hình thức làm việc")}><select {...bind('employmentType')}>{EMPLOYMENT_TYPES.map(type => <option key={type} value={type}>{t(type)}</option>)}</select></Field>
             <Field label={t("Địa điểm làm việc")} className="full" required><textarea {...bind('location')} required maxLength={200} rows={2} placeholder={t("Số nhà, đường, phường/xã, tỉnh/thành phố…")}/></Field>

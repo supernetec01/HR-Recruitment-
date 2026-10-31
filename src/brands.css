@@ -1,0 +1,60 @@
+.company-showcase{margin:48px 0 12px;padding-top:32px;border-top:1px solid #dce4ec;color:#16334b}
+.simple-careers .empty h2{font-size:20px;line-height:1.5;color:#16334b;margin:12px 0 8px}
+.company-showcase-heading{display:flex;justify-content:space-between;gap:24px;align-items:center;margin-bottom:24px}
+.company-showcase-heading h2{font-size:23px;line-height:1.45;letter-spacing:-.5px;margin:0 0 8px;color:#16334b}
+.company-showcase-heading p,.brands-admin-heading p{margin:0;color:#53677a;font-size:14px;line-height:1.7}
+.company-showcase-heading>svg{color:#60778a;flex-shrink:0}
+.company-brand-grid,.brand-admin-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.company-brand-card,.brand-admin-card{min-width:0;border:1px solid #dce4ec;border-radius:12px;padding:24px;background:#fff;display:flex;flex-direction:column;gap:18px}
+.company-brand-heading{display:flex;align-items:center;gap:16px;min-width:0}
+.company-brand-heading>div:last-child{min-width:0}
+.company-brand-heading h3,.company-brand-heading h2{font-size:18px;line-height:1.45;margin:0 0 5px;color:#16334b;overflow-wrap:anywhere}
+.company-brand-heading span{font-size:12px;line-height:1.6;color:#53677a;display:block;overflow-wrap:anywhere}
+.company-brand-logo{width:72px;height:72px;flex:0 0 72px;border:1px solid #e3e9ef;border-radius:12px;background:#f7f9fb;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:8px;color:#426078}
+.company-brand-logo img{display:block;width:100%;height:100%;object-fit:contain}
+.company-brand-logo>span{font-size:23px!important;font-weight:600;color:#426078;letter-spacing:1px}
+.company-brand-description{font-size:13px;line-height:1.85;color:#53677a;margin:0;white-space:pre-line;overflow-wrap:anywhere}
+.company-brand-channels{display:flex;gap:10px;flex-wrap:wrap;margin-top:auto}
+.company-brand-channels a{display:inline-flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;border:1px solid #dce4ec;border-radius:7px;padding:10px 14px;font-size:12px;font-weight:500;color:#07577e;max-width:100%;overflow-wrap:anywhere;text-decoration:none;line-height:1.5}
+.company-brand-channels a:hover{background:#f2f7fa;border-color:#91aec1}
+.brand-load-error{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-bottom:20px}
+.brand-load-error .alert{margin:0}
+.brands-admin-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:28px}
+.brands-admin-heading h1{font-size:25px;line-height:1.4;letter-spacing:-.6px;margin:0 0 8px}
+.brand-heading-actions{display:flex;gap:12px;flex-wrap:wrap;flex-shrink:0}
+.brand-admin-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+.brand-admin-card .company-brand-logo{width:64px;height:64px;flex-basis:64px}
+.brand-visibility{margin-top:8px;color:#655f55!important;font-size:11px!important}
+.brand-visibility.visible{color:#24674b!important}
+.brand-admin-actions{display:flex;gap:12px;flex-wrap:wrap;border-top:1px solid #e7edf2;padding-top:18px}
+.brand-admin-actions .button,.brand-heading-actions .button{min-height:44px}
+.brand-delete{color:#ac303d!important}
+.modal.brand-editor-modal{width:min(780px,calc(100vw - 32px));display:flex;flex-direction:column;overflow:hidden}
+.brand-editor-modal .modal-head{flex-shrink:0}
+.brand-editor-modal form{min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.brands-manager .modal-footer{display:flex;justify-content:flex-end;align-items:center;gap:12px;padding:18px 27px;border-top:1px solid #dce4ec;background:#f8fafc}
+.brands-manager .modal-footer .button{min-height:44px}
+.brand-editor-modal .modal-body{overflow:auto}
+.brand-editor-fields{border:0;padding:0;margin:0;min-width:0;display:grid;gap:24px}
+.brand-logo-editor{display:grid;grid-template-columns:88px minmax(0,1fr);gap:20px;align-items:center;padding-bottom:24px;border-bottom:1px solid #e3e9ef}
+.brand-logo-editor .company-brand-logo{width:88px;height:88px}
+.brand-logo-editor input[type=file]{font-size:12px;max-width:100%;padding:9px;min-height:44px}
+.brand-logo-editor input::file-selector-button{margin-right:12px;border:1px solid #d6e0e8;border-radius:5px;padding:6px 10px;background:#f4f7fa;color:#16334b;cursor:pointer}
+.brand-logo-editor .text-button{margin-top:8px;min-height:36px}
+.brand-section-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.brand-section-heading h3{font-size:15px;margin:0}
+.brand-section-heading .text-button{min-height:44px}
+.brand-channel-editor>.helper{margin:0 0 16px}
+.brand-channel-row{display:grid;grid-template-columns:minmax(100px,.7fr) minmax(0,1.4fr) 44px;gap:12px;align-items:end;margin-top:16px}
+.brand-channel-row .icon-button{height:44px;width:44px;margin-bottom:1px}
+.brand-language-fields{border:1px solid #dce4ec;border-radius:8px;padding:16px}
+.brand-language-fields summary{cursor:pointer;font-size:13px;font-weight:500;color:#34546b;line-height:1.6}
+.brand-language-fields[open] summary{margin-bottom:18px}
+.brand-language-fields .field+.field{margin-top:16px}
+.brand-active-control{display:flex;gap:10px;align-items:center;align-self:center;min-height:44px;font-size:13px;line-height:1.6;cursor:pointer}
+.brand-active-control input{width:18px;height:18px;min-height:18px;flex-shrink:0;accent-color:#07577e}
+.brand-editor-modal .modal-footer{gap:12px;flex-shrink:0}
+.brand-editor-modal .alert{margin-top:20px}
+@media(min-width:1500px){.brand-admin-list{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:1100px){.brands-admin-heading{flex-direction:column}.company-brand-grid{gap:16px}.company-brand-card{padding:20px}.company-brand-heading{gap:12px}.company-brand-logo{width:56px;height:56px;flex-basis:56px}.company-brand-heading h3{font-size:16px}}
+@media(max-width:760px){.company-brand-grid,.brand-admin-list{grid-template-columns:1fr}.company-showcase{margin-top:36px;padding-top:28px}.company-showcase-heading h2{font-size:20px}.company-showcase-heading p{font-size:13px}.company-brand-card{padding:22px;gap:16px}.company-brand-logo{width:64px;height:64px;flex-basis:64px}.company-brand-heading h3{font-size:18px}.brands-admin-heading h1{font-size:23px}.brand-heading-actions{width:100%;gap:10px}.brand-heading-actions .button{white-space:normal;justify-content:center;min-height:44px;flex:1}.brand-editor-modal{width:calc(100vw - 24px)}.brand-channel-row{grid-template-columns:minmax(0,1fr) 44px;gap:10px;padding:16px;border:1px solid #e3e9ef;border-radius:8px}.brand-channel-row>.field:first-child{grid-column:1/-1}.brand-channel-row>.field:nth-child(2){grid-column:1}.brand-logo-editor{grid-template-columns:1fr;gap:14px}.brand-logo-editor .company-brand-logo{width:80px;height:80px}.brand-editor-modal .form-grid{grid-template-columns:1fr}.company-brand-channels a{font-size:13px}}

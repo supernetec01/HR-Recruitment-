@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowRight, CalendarDays, Clock3, Copy, MapPin, UsersRound, 
 import { api, date, errorMessage } from './api';
 import { Alert, Spinner } from './ui';
 import { PublicHeader, PublicFooter } from './public';
-import { brandName, JDContent, ShareJobLink } from './jobs';
+import { JDContent, ShareJobLink } from './jobs';
 import type { Job } from './types';
 import { useLanguage, setLanguage } from './locale';
 
@@ -28,7 +28,7 @@ export function PublicJobPage() {
   const updatedAt = job?.updated_at || job?.created_at;
   return <div className="public-page jd-page"><PublicHeader/><main className="public-jd-main"><Link className="back-link" to="/tuyen-dung"><ArrowLeft size={16}/>{t("Tất cả vị trí tuyển dụng")}</Link>
     {loading ? <Spinner/> : error || !job ? <div className="jd-unavailable"><Alert>{error || t("Tin tuyển dụng không còn hiển thị.")}</Alert><Link className="button primary" to="/tuyen-dung">{t("Xem các vị trí đang tuyển")}<ArrowRight size={17}/></Link></div> : <>
-      <header className="public-jd-heading"><div><span className="jd-department">{job.department}</span><h1>{job.title}</h1><p><span>{brandName(job.business_line)}</span><span>·</span><MapPin size={15}/>{job.location}</p></div><Link className="button primary" to={`/ung-tuyen/${encodeURIComponent(job.id)}`}>{t("Ứng tuyển ngay")}<ArrowRight size={17}/></Link></header>
+      <header className="public-jd-heading"><div><span className="jd-department">{job.department}</span><h1>{job.title}</h1><p><span>{(job.brand_name || 'Super Net')}</span><span>·</span><MapPin size={15}/>{job.location}</p></div><Link className="button primary" to={`/ung-tuyen/${encodeURIComponent(job.id)}`}>{t("Ứng tuyển ngay")}<ArrowRight size={17}/></Link></header>
       {language === 'zh-CN' && job.translation_available === false && <p className="jd-language-note">{t("Bản tiếng Trung chưa được đăng. Nội dung công việc đang hiển thị bằng ngôn ngữ gốc.")}</p>}
       <div className="public-jd-layout"><article className="panel jd-article"><JDContent job={job}/></article>
       <aside className="panel jd-sidebar"><h2>{t("Thông tin vị trí")}</h2><dl>
