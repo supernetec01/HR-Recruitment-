@@ -24,6 +24,8 @@ Xem [hướng dẫn VS Code và sử dụng](docs/vscode.md), [thiết kế dữ
 
 [Bản sửa theo QA ngày 31/10/2026](docs/qa-fixes-2026-10-31.md) bổ sung chống ghi đè hồ sơ giữa hai HR, thử lại tạo JD không sinh trùng, xử lý CV đã nhận khi JD tạm dừng và dọn tệp khi lưu thất bại. Khi sửa hồ sơ từ phiên bản cũ, biểu mẫu báo xung đột và giữ nội dung đang nhập để đối chiếu.
 
+Giao diện cập nhật ngày 31/10/2026: tập trung danh sách việc làm, bộ lọc, JD và form ứng tuyển; bỏ slogan và các khối thông điệp trang trí. Đăng nhập, dashboard và sidebar nội bộ cũng được rút gọn. Xem [ghi chú thay đổi và kiểm tra giao diện](docs/ui-refresh-2026-10-31.md).
+
 ## Phân quyền
 
 | Chức năng | Admin | Sếp | Người phỏng vấn | HR |
@@ -52,7 +54,7 @@ Cổng `/tuyen-dung` cho ứng viên tự gửi; nghi trùng được đưa vào
 
 ## Đăng JD và trang tuyển dụng công khai
 
-Trang `/tuyen-dung` giới thiệu ba ngành hàng: **phụ kiện xe Safestraps**, **thiết bị âm thanh JieLien**, **Mẹ và Bé Baby tatto**; phía dưới là vị trí đang tuyển, tìm kiếm và lọc ngành hàng.
+Trang `/tuyen-dung` hiển thị danh sách vị trí và bộ lọc ba ngành hàng: **phụ kiện xe Safestraps**, **thiết bị âm thanh JieLien**, **Mẹ và Bé Baby tatto**; mỗi vị trí có thông tin địa điểm, hình thức, mức lương và số người cần tuyển.
 
 Admin/HR vào **Vị trí tuyển dụng → Tạo JD tuyển dụng**. Biểu mẫu chia thành Thông tin chung, Nội dung công việc, Cách thức ứng tuyển và Đăng tuyển; nhập tên công ty, vị trí, bộ phận, ngành hàng, số lượng, hình thức, địa chỉ đầy đủ, mức lương, giờ làm, mô tả, yêu cầu, quyền lợi, hướng dẫn ứng tuyển, email nhận CV, tiêu đề email, Zalo và hạn nhận hồ sơ. Dùng **Xem trước JD** để kiểm tra trước khi lưu. Nội dung xuống dòng được giữ nguyên; các dòng bắt đầu bằng “-”/“•” hiển thị dạng danh sách.
 

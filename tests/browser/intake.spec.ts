@@ -37,7 +37,7 @@ test('applicant applies publicly; duplicate enters review and HR links it withou
   await page.getByLabel('Tải CV').setInputFiles(pdf);
   await page.getByRole('checkbox').check();
   await page.getByRole('button',{name:'Gửi hồ sơ ứng tuyển'}).click();
-  await expect(page.getByRole('heading',{name:'Cảm ơn bạn đã kết nối!'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Đã nhận hồ sơ'})).toBeVisible();
   await page.goto('/?page=candidates&tab=pending');
   const row = page.locator('.submission-row').filter({hasText:'Minh Anh nộp lại'});
   await row.getByRole('button',{name:'Kiểm tra & xác nhận'}).click();
@@ -64,7 +64,7 @@ test('single-use update link supplements the existing record without an account'
   await applicant.getByLabel('Tải CV').setInputFiles({...pdf,name:'CV-version-3.pdf'});
   await applicant.getByRole('checkbox').check();
   await applicant.getByRole('button',{name:'Gửi thông tin bổ sung'}).click();
-  await expect(applicant.getByRole('heading',{name:'Đã cập nhật, cảm ơn bạn!'})).toBeVisible();
+  await expect(applicant.getByRole('heading',{name:'Đã nhận thông tin bổ sung'})).toBeVisible();
   await applicant.reload();
   await expect(applicant.getByRole('alert')).toContainText('đã được sử dụng');
   await page.reload();
@@ -116,7 +116,7 @@ test('mobile navigation and intake form fit the viewport with no JavaScript erro
   await expect(page.getByRole('heading',{name:'Mobile draft',exact:true})).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
   await page.goto('/tuyen-dung');
-  await expect(page.getByRole('heading',{name:/Vị trí đang tuyển/})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Tuyển dụng tại Super Net',exact:true})).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
   expect(errors).toEqual([]);
 });

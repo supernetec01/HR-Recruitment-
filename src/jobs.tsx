@@ -60,7 +60,7 @@ export function JobsManager({ jobs, editable, onAdd, onEdit, onRefresh, notify }
     catch (error) { notify(errorMessage(error)); onRefresh(); } finally { setBusy(null); }
   }
   return <>
-    <div className="page-heading"><div><span className="eyebrow page-eyebrow">{t("QUẢN LÝ VỊ TRÍ & NỘI DUNG TUYỂN DỤNG")}</span><h1>{t("Vị trí tuyển dụng & JD")}</h1><p>{t("Tạo JD, chỉnh sửa nội dung và chia sẻ vị trí đang tuyển với ứng viên.")}</p></div>{editable && <button className="button primary" onClick={onAdd}><Plus size={17}/>{t("Tạo JD tuyển dụng")}</button>}</div>
+    <div className="page-heading"><div><h1>{t("Vị trí tuyển dụng & JD")}</h1><p>{t("Quản lý nội dung và trạng thái các tin tuyển dụng.")}</p></div>{editable && <button className="button primary" onClick={onAdd}><Plus size={17}/>{t("Tạo JD tuyển dụng")}</button>}</div>
     <div className="jobs-toolbar"><label className="search-input"><Search size={18}/><input aria-label={t("Tìm vị trí nội bộ")} value={search} onChange={event => setSearch(event.target.value)} placeholder={t("Tìm tên vị trí, bộ phận, ngành hàng…")}/></label><select aria-label={t("Lọc trạng thái JD")} value={status} onChange={event => setStatus(event.target.value)}><option value="all">{t("Tất cả trạng thái")}</option><option value="open">{t("Đang tuyển")}</option><option value="closed">{t("Tạm dừng")}</option><option value="expired">{t("Hết hạn")}</option></select><Link to="/tuyen-dung" className="text-button" target="_blank">{t("Trang tuyển dụng công khai")}<ExternalLink size={16}/></Link></div>
     <div className="jobs-grid">{filtered.map((job,index) => {
       const visible = job.status === 'open' && !jobExpired(job);

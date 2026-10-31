@@ -280,3 +280,55 @@ body, .public-page { background: var(--bg); color: var(--text); }
 .contact-confirmation h3 { font-size: calc(13px * var(--text-scale)); color: #2f637c; margin-bottom: 15px; }
 .contact-confirmation .checkbox-line { margin-top: 15px; font-size: calc(10px * var(--text-scale)); line-height: 1.8; }
 .contact-confirmation > .helper { margin-top: 9px; }
+
+/* Recruitment workspace: neutral surfaces and task-focused typography. */
+:root { --bg: #f6f8fa; --border: #dfe5eb; --muted: #526675; }
+.app-shell, .main-shell { background: #f6f8fa; }
+.workspace-main { background: #f6f8fa; }
+.panel, .metric-card { border-color: #dfe5eb; box-shadow: none; border-radius: 8px; }
+.page-heading h1 { font-size: 30px; line-height: 1.4; color: #19384d; letter-spacing: -.035em; }
+.page-heading p, .breadcrumb, .muted { color: #526675; }
+.page-heading p { font-size: 14px; line-height: 1.7; margin-top: 8px; }
+.page-heading .hero-actions { padding-top: 0; }
+.metric-card, .metric-card.total { background: #fff; border-color: #dfe5eb; padding: 22px; }
+.metric-top > span:first-child { color: #435c6f; font-size: 13px; line-height: 1.6; }
+.metric-value, .metric-card.total .metric-value { color: #193f57; font-size: 34px; font-weight: 600; margin-top: 14px; }
+.metric-card .metric-icon, .metric-card.fresh .metric-icon, .metric-card.reviewing .metric-icon, .metric-card.incomplete .metric-icon { background: #f0f5f8; color: #32617d; border-radius: 6px; }
+.brand small { font-size: 12px; letter-spacing: .02em; }
+.brand-light small { color: #c2dce9; }
+.sidebar-careers { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #d3e5ef; font-size: 13px; border-top: 1px solid #ffffff26; padding: 16px 4px; margin-bottom: 8px; }
+.sidebar-careers:hover { color: #fff; }
+.sidebar-user .avatar { background: #d9edf6; color: #15516c; }
+.workspace-footer { color: #526675; }
+.dashboard-bottom, .schedule-summary, .schedule-table small, .job-location { color: #526675; }
+.schedule-panel { border-color: #dfe5eb; }
+.schedule-heading, .schedule-summary { background: #fff; }
+.schedule-heading h3 { color: #193f57; }
+.dashboard-card > .section-heading p, .setup-guide p, .empty p { color: #526675; }
+.empty { padding: 38px 24px; }
+.empty h3 { color: #3c5a70; }
+.modal-head h2 { font-size: 23px; color: #193f57; }
+.modal-head p { color: #526675; font-size: 14px; line-height: 1.7; }
+.modal-body .helper, .modal-foot > span { color: #526675; }
+.field > label, .field > span:first-child { color: #304c60; }
+.compact-login { display: flex; align-items: center; justify-content: center; padding: 48px 24px; min-height: 100vh; background: #f6f8fa; }
+.compact-login .login-form { padding: 36px; width: 100%; max-width: 464px; background: #fff; border: 1px solid #dfe5eb; border-radius: 10px; box-shadow: 0 8px 30px #17394d06; }
+.compact-login .login-form > div { width: 100%; max-width: none; }
+.compact-login .brand { margin-bottom: 32px; }
+.compact-login .brand strong { font-size: 27px; }
+.compact-login .brand small { color: #526675; }
+.compact-login .login-form h2 { color: #19384d; font-weight: 600; }
+.compact-login .login-form p { color: #526675; line-height: 1.8; }
+.compact-login .login-form .field > label { color: #304c60; }
+.compact-login .login-form input { min-height: 46px; border-color: #cbd5df; color: #233f53; }
+.compact-login .login-form .back-link { color: #09688d; padding-top: 24px; border-top: 1px solid #e3e9ee; display: flex; justify-content: space-between; }
+@media (max-width: 680px) {
+  .page-heading h1 { font-size: 27px; }
+  .page-heading p { font-size: 13px; }
+  .metric-card, .metric-card.total { padding: 16px; }
+  .metric-top > span:first-child { font-size: 12px; }
+  .metric-value, .metric-card.total .metric-value { font-size: 30px; }
+  .compact-login { padding: 24px 20px; }
+  .compact-login .login-form { padding: 28px 24px; }
+  .compact-login .brand { margin-bottom: 24px; }
+}

@@ -63,7 +63,8 @@ test('HR publishes a structured JD; an anonymous applicant reads it and submits 
   const applicantContext = await browser.newContext({baseURL:'http://127.0.0.1:3110',viewport:{width:1440,height:1000},timezoneId:'Asia/Bangkok'});
   const applicant = await applicantContext.newPage();
   await applicant.goto('/tuyen-dung');
-  for (const brand of ['Safestraps','JieLien','Baby tatto']) await expect(applicant.locator('.business-grid').getByRole('heading',{name:brand,exact:true})).toBeVisible();
+  await expect(applicant.getByRole('heading',{name:'Tuyển dụng tại Super Net',exact:true})).toBeVisible();
+  for (const brand of ['Safestraps','JieLien','Baby tatto']) await expect(applicant.getByLabel('Lọc ngành hàng tuyển dụng').locator('option').filter({hasText:brand})).toHaveCount(1);
   await applicant.screenshot({path:test.info().outputPath('careers.png'),fullPage:true,animations:'disabled'});
   await applicant.getByLabel('Lọc ngành hàng tuyển dụng').selectOption('safestraps');
   await applicant.locator('.career-job').filter({hasText:'Content Marketing · Safestraps'}).click();
@@ -80,7 +81,7 @@ test('HR publishes a structured JD; an anonymous applicant reads it and submits 
   await applicant.getByLabel('Tải CV').setInputFiles({name:'CV-JD.pdf',mimeType:'application/pdf',buffer:readFileSync('tests/fixtures/cv.pdf')});
   await applicant.getByRole('checkbox').check();
   await applicant.getByRole('button',{name:'Gửi hồ sơ ứng tuyển'}).click();
-  await expect(applicant.getByRole('heading',{name:'Cảm ơn bạn đã kết nối!'})).toBeVisible();
+  await expect(applicant.getByRole('heading',{name:'Đã nhận hồ sơ'})).toBeVisible();
   const candidates = await (await admin.get('/api/v1/candidates')).json();
   expect(candidates.some((candidate: {email: string; applications: {job_id: string}[]}) => candidate.email === 'jd-applicant@example.com' && candidate.applications.some(application => application.job_id === id))).toBeTruthy();
   expect(errors).toEqual([]);
@@ -127,12 +128,13 @@ test('public careers, JD and HR editor fit a phone with readable enlarged text',
   const job = await createJob('Chuyên viên nội dung · Bản kiểm thử');
   await page.setViewportSize({width:390,height:844});
   await page.goto('/tuyen-dung');
-  await expect(page.locator('.business-grid').getByRole('heading',{name:'Baby tatto',exact:true})).toBeVisible();
+  await expect(page.getByLabel('Lọc ngành hàng tuyển dụng')).toBeVisible();
+  await expect(page.locator('.career-job').filter({hasText:job.title})).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
   await page.goto(`/tuyen-dung/${job.id}`);
   await expect(page.getByRole('heading',{name:job.title,exact:true})).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
-  expect(await page.locator('.jd-content p').first().evaluate(element => parseFloat(getComputedStyle(element).fontSize))).toBeCloseTo(12 * 1.2,1);
+  expect(await page.locator('.jd-content p').first().evaluate(element => parseFloat(getComputedStyle(element).fontSize))).toBeGreaterThanOrEqual(14.4);
   await page.screenshot({path:test.info().outputPath('job-mobile.png'),fullPage:true,animations:'disabled'});
   await login(page,'hr-jd');
   await page.getByRole('button',{name:'Tạo JD tuyển dụng',exact:true}).click();

@@ -25,7 +25,7 @@ test('Vite overwrites spoofed forwarding headers instead of accepting a hostile 
 });
 test('login typography is 20 percent larger and remains within desktop and mobile viewports', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Chào mừng trở lại' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Đăng nhập', exact: true })).toBeVisible();
   const pixels = async (selector: string) => page.locator(selector).first().evaluate(element => parseFloat(getComputedStyle(element).fontSize));
   expect(await pixels('.login-form h2')).toBeCloseTo(29 * 1.2, 1);
   expect(await pixels('.login-form .field > label')).toBeCloseTo(10 * 1.2, 1);

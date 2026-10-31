@@ -35,7 +35,7 @@ export function Modal({ title, subtitle, children, onClose, wide = false, classN
   }, []);
   return <div className="modal-backdrop" onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
     <div className={`modal ${wide ? 'wide' : ''} ${className}`} role="dialog" aria-modal="true" aria-labelledby="modal-title" tabIndex={-1} ref={ref}>
-      <header className="modal-head"><div><span className="eyebrow">{t("SUPER NET RECRUITMENT")}</span><h2 id="modal-title">{t(title)}</h2>{subtitle && <p>{t(subtitle)}</p>}</div><button className="icon-button" aria-label={t("Đóng")} onClick={onClose}><X size={20}/></button></header>
+      <header className="modal-head"><div><h2 id="modal-title">{t(title)}</h2>{subtitle && <p>{t(subtitle)}</p>}</div><button className="icon-button" aria-label={t("Đóng")} onClick={onClose}><X size={20}/></button></header>
       {children}
     </div>
   </div>;

@@ -141,7 +141,7 @@ test('an applicant can upload a bilingual PDF with embedded Content Credentials 
   await page.getByLabel('Tải CV', { exact: true }).setInputFiles({ name: filename, mimeType: 'application/pdf', buffer: readFileSync('tests/fixtures/cv-content-credentials.pdf') });
   await page.getByRole('checkbox').check();
   await page.getByRole('button', { name: 'Gửi hồ sơ ứng tuyển' }).click();
-  await expect(page.getByRole('heading', { name: 'Cảm ơn bạn đã kết nối!' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Đã nhận hồ sơ' })).toBeVisible();
   const received = (await (await admin.get('/api/v1/candidates')).json()).find((c: { email: string }) => c.email === applicantEmail);
   expect(received.documents[0].original_name).toBe(filename);
   expect(received.documents[0].scan.status).toBe('clean');

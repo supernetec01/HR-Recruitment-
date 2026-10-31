@@ -34,7 +34,7 @@ export function CandidateForm({ jobs, users, user, uploadFirst, onClose, onSaved
     catch (err) { if (err instanceof ApiError && err.code === 'POSSIBLE_DUPLICATE' && err.matches) { setMatches(err.matches); setTarget(err.matches[0].id); setResolution('link'); } else setError(errorMessage(err)); }
     finally { setBusy(false); }
   }
-  return <Modal title={uploadFirst ? t("Tiếp nhận CV mới") : t("Thêm ứng viên")} subtitle={t("Bắt đầu với những gì bạn có. Thông tin còn thiếu có thể bổ sung sau.")} onClose={() => !busy && onClose()} wide>
+  return <Modal title={uploadFirst ? t("Tiếp nhận CV mới") : t("Thêm ứng viên")} subtitle={t("Nhập thông tin ứng viên và đính kèm CV nếu có.")} onClose={() => !busy && onClose()} wide>
     <form onSubmit={submit} onChange={() => { requestKey.current = key(); if (matches.length) { setMatches([]); setResolution(''); } }}>
       <div className="modal-body">
         <div className="info-note"><Info size={18}/><span>{t("Hồ sơ chưa đủ thông tin vẫn được lưu và đánh dấu ")}<strong>{t("Cần bổ sung")}</strong>.</span></div>

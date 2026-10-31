@@ -31,7 +31,7 @@ test.beforeAll(async ({ playwright }) => {
 
 test('Admin logs in normally and creates an HR account through the management screen', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading',{name:'Chào mừng trở lại'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Đăng nhập',exact:true})).toBeVisible();
   await expect(page.getByRole('button',{name:'Vào không gian demo'})).toHaveCount(0);
   await login(page);
   await page.locator('.main-nav').getByRole('button',{name:'Thành viên & phân quyền'}).click();

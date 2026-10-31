@@ -2,6 +2,14 @@
 
 Tài liệu này cụ thể hóa yêu cầu hiện tại của Super Net. Phạm vi gồm tiếp nhận/bổ sung hồ sơ, JD, vận hành phỏng vấn, trình xem CV, giao diện Việt–Trung và tích hợp OpenAI dịch CV/JD theo thao tác của nhân sự. Dịch thật cần khóa API; hệ thống không tự quyết định tuyển dụng.
 
+## Giao diện và cách viết nội dung
+
+Theo phản hồi ngày 31/10/2026, giao diện ưu tiên thông tin và thao tác tuyển dụng. Không thêm slogan, câu truyền cảm hứng, triết lý về con người hoặc lời quảng bá vào banner, sidebar, dashboard, trang đăng nhập và form. Tiêu đề gọi đúng chức năng; hướng dẫn chỉ xuất hiện khi giúp người dùng hoàn tất thao tác.
+
+Trang công khai đưa bộ lọc và danh sách vị trí lên đầu, thể hiện tên công việc, bộ phận/ngành hàng, địa điểm, hình thức, mức lương và số lượng theo dữ liệu JD. Không tự điền mức lương hoặc quyền lợi khi công ty chưa cung cấp. JD và form ứng tuyển không lặp lại phần giới thiệu công ty. Thông báo kết quả dùng câu trực tiếp như “Đã nhận hồ sơ”. Thông tin xử lý dữ liệu và điều kiện sử dụng liên kết vẫn được giữ tại nơi cần đọc.
+
+Thiết kế dùng nền trung tính, đường viền nhẹ, màu thương hiệu làm điểm nhấn và chữ nội dung rõ tương phản. Kiểm tra cả desktop lẫn màn hình 320 px. Ảnh trong `docs/screenshots/` dùng dữ liệu giả lập để minh họa giao diện, không phải dữ liệu tuyển dụng thực tế.
+
 ## Bổ sung vận hành nội bộ
 
 `users` có tên đăng nhập duy nhất không phân biệt hoa/thường, trạng thái hoạt động, vai trò Admin/Sếp/HR/Người phỏng vấn (`interviewer`); mật khẩu băm scrypt. Nâng cấp CHECK của SQLite bằng giao dịch dựng lại bảng, giữ ID, hash, phiên, khóa ngoại và chủ sở hữu hồ sơ; kiểm tra referential integrity rồi bật lại foreign keys. Admin được khởi tạo một lần qua `npm run setup`, không có mật khẩu hardcode. Admin tạo/sửa/khóa/đặt lại mật khẩu user qua giao diện, đổi quyền hoặc mật khẩu sẽ thu hồi phiên cũ. Chỉ Admin thấy bảng chức năng/vai trò và danh sách tài khoản; người khác dùng trang tài khoản cá nhân. Dữ liệu nội bộ ở `.data/internal/`, độc lập với demo `.data/`.
@@ -32,7 +40,7 @@ Mã nguồn schema: `server/db.mjs`. Database có khóa ngoại, index liên h�
 
 ## JD và cổng tuyển dụng
 
-`jobs` bổ sung `requirements`, `benefits`, `working_hours`, `salary_range`, `business_line`, `application_deadline`, `updated_at`, `revision` bằng migration thêm cột, không thay ID hay xóa nội dung cũ. `business_line` nhận `safestraps`, `jielien`, `baby-tatto` hoặc chuỗi rỗng cho tuyển dụng chung. Trang công khai giới thiệu ba ngành hàng; mỗi vị trí có trang JD riêng `/tuyen-dung/:id`, tách khỏi biểu mẫu `/ung-tuyen/:id`.
+`jobs` bổ sung `requirements`, `benefits`, `working_hours`, `salary_range`, `business_line`, `application_deadline`, `updated_at`, `revision` bằng migration thêm cột, không thay ID hay xóa nội dung cũ. `business_line` nhận `safestraps`, `jielien`, `baby-tatto` hoặc chuỗi rỗng cho tuyển dụng chung. Trang công khai có bộ lọc ba ngành hàng; mỗi vị trí có trang JD riêng `/tuyen-dung/:id`, tách khỏi biểu mẫu `/ung-tuyen/:id`.
 
 Các cột `company_name`, `application_instructions`, `application_email`, `application_email_subject`, `application_zalo` lưu đầy đủ tên công ty/cách ứng tuyển. Biểu mẫu `src/job-editor.tsx` giữ trạng thái khi chuyển Nhập thông tin/Xem trước; mẫu `src/jd-template.ts` chép nội dung tài liệu do Super Net cung cấp, chỉ điền khi người dùng chọn và chỉ ghi DB khi lưu. `JDContent` dùng chung cho xem trước và trang công khai, hiển thị thông tin chung, mô tả, yêu cầu, lương/quyền lợi và liên hệ. Văn bản được React escape, dòng bullet thành danh sách; email/Zalo được kiểm tra trước khi lưu.
 
