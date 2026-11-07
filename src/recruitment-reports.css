@@ -1,0 +1,26 @@
+.report-filters{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;padding:18px 22px;margin-bottom:20px}
+.report-filters label,.candidate-order label{display:flex;gap:7px;flex-direction:column;font-size:13px;color:#47657c}
+.report-filters input,.report-filters select,.candidate-order select{min-height:38px;max-width:100%;border:1px solid #d9e3e8;border-radius:6px;background:#fff;color:#24516b;padding:7px 10px;font:inherit}
+.report-filters>.muted{max-width:340px;font-size:12px;line-height:1.7}
+.report-period{font-size:14px;color:#47657c;margin:0 0 14px}
+.report-outcomes{padding:22px;margin-bottom:18px}
+.report-outcomes h3{margin:0 0 18px;font-size:16px}
+.report-outcome-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.report-outcome{display:flex;flex-direction:column;gap:10px;border-left:3px solid #b5c5d0;padding:3px 14px;font-size:13px}
+.report-outcome strong{font-size:28px;color:#034969}
+.report-outcome.pass{border-color:#93c947}.report-outcome.fail{border-color:#d98585}.report-outcome.follow_up{border-color:#bd9ee1}
+.report-outcomes p{font-size:12px;line-height:1.8;margin:18px 0 0}
+.report-method{font-size:13px;line-height:1.9;color:#47657c;margin-bottom:22px}
+.report-method summary{cursor:pointer;color:#034969}.report-method ul{padding-left:22px}
+.candidate-order{display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding:0 20px 16px}
+.candidate-order label{flex-direction:row;align-items:center;gap:10px}
+.candidate-order>span{font-size:12px;line-height:1.8;color:#648096}
+.report-filters input:focus-visible,.report-filters select:focus-visible,.candidate-order select:focus-visible{outline:2px solid #149cd0;outline-offset:2px}
+@media(max-width:560px){
+  .report-filters{padding:14px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+  .report-filters>label:first-child,.report-filters>.muted{grid-column:1/-1}.report-filters label{min-width:0}
+  .report-filters input{min-width:0;width:100%}.report-filters>.muted{max-width:none}
+  .report-outcomes{padding:16px}.report-outcome-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+  .candidate-order{padding:0 12px 12px}.candidate-order label{flex-wrap:wrap}
+  .recruitment-report .section-heading{align-items:flex-start;flex-direction:column;gap:8px}
+}

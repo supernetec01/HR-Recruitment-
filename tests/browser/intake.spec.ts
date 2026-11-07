@@ -51,7 +51,7 @@ test('applicant applies publicly; duplicate enters review and HR links it withou
 });
 
 test('single-use update link supplements the existing record without an account', async ({ page, context }) => {
-  await page.goto('/?page=candidates');
+  await page.goto('/?page=candidates&tab=all');
   await page.getByRole('button',{name:'Mở hồ sơ Trần Hoàng Nam',exact:true}).click();
   await page.getByRole('button',{name:'Mời bổ sung hồ sơ'}).click();
   await page.getByRole('button',{name:'Tạo liên kết',exact:true}).click();
@@ -75,7 +75,7 @@ test('single-use update link supplements the existing record without an account'
 });
 
 test('filters, pagination, assignment and demo read-only Boss work through the UI', async ({ page }) => {
-  await page.goto('/?page=candidates');
+  await page.goto('/?page=candidates&tab=all');
   await page.getByLabel('Tìm kiếm ứng viên').fill('nguyen minh anh');
   await expect(page.locator('tbody tr')).toHaveCount(1);
   await page.getByRole('button',{name:'Xóa tìm kiếm'}).click();

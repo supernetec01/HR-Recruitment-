@@ -18,6 +18,7 @@ import { registerJobRoutes, openJobCondition, todayInVietnam } from './jobs.mjs'
 import { scanBuffer, scannerStatus } from './antivirus.mjs';
 import { registerDocumentPreview } from './documents.mjs';
 import { registerTranslations } from './translations.mjs';
+import { registerRecruitmentReports } from './recruitment-reports.mjs';
 
 const text = (max = 200) => z.string().trim().max(max).default('');
 const emailValue = z.string().trim().max(254).pipe(z.union([z.literal(''), z.email()]));
@@ -191,6 +192,7 @@ export function createApp({ demo = false, dataDir = resolve(demo ? '.data' : '.d
     return record;
   }
 
+  registerRecruitmentReports(app, { db, staff });
   app.get('/api/v1/health', (req, res) => { db.prepare('SELECT 1').get(); res.json({ status: 'ok', demo }); });
   app.get('/api/v1/scanner-status', staff, async (req, res) => res.json(await scannerStatus()));
   app.get('/api/v1/config', (req, res) => res.json({ demo, needsSetup: !demo && !hasAdministrator(db), policyVersion: 'recruitment-v2' }));

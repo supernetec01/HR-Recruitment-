@@ -4,6 +4,8 @@ Website tuyển dụng Super Net: **Admin/HR đăng JD → ứng viên xem tuy�
 
 Bảng màu Super Net: navy `#034969`, xanh dương `#149cd0`, xanh lá `#93c947`. Một hồ sơ ứng viên gốc, nhiều lượt ứng tuyển và nhiều phiên bản CV.
 
+**Quản lý ứng viên** mặc định mở nhóm **Mới tiếp nhận**, có sắp xếp ưu tiên hồ sơ chưa xử lý. **Báo cáo tuyển dụng** hỗ trợ 7/30 ngày, tháng này hoặc khoảng ngày tùy chọn, thống kê riêng hồ sơ nhận, hẹn phỏng vấn, đã phỏng vấn và kết quả. Xem [cách tính và hướng dẫn sử dụng](docs/candidate-priority-and-reports.md).
+
 ## Cài đặt trong VS Code
 
 Cài Git, **Node.js 24+** và VS Code. Trong Terminal:
