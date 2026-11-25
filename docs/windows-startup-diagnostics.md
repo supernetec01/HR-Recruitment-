@@ -33,3 +33,29 @@ Nếu `CollectionFailures` báo không đọc được tác vụ/process, chạy
 - PowerShell trống: cần kiểm tra task/process và mã lỗi. Có thể là shell được mở nhưng script chưa chạy/chưa tới Node, không tự kết luận từ ảnh.
 
 Trong repo trước thay đổi này chỉ có `npm start`/`npm run dev`, không có định nghĩa tác vụ Task Scheduler hay bộ cài tự chạy Windows. Cấu hình đã tạo trên máy công ty nằm ngoài source code. Cần báo cáo thực tế để sửa đúng tác vụ, tránh tạo thêm tác vụ trùng hoặc đổi dữ liệu/tài khoản đang dùng.
+
+## Sửa trường hợp HR-Website đã kết thúc và không tự chạy lại
+
+Trong báo cáo đã kiểm tra, `HR-Website` có Start in và file `start-hr.ps1` tồn tại, nhưng tác vụ đã kết thúc với `0xC000013A`; không có Node/listener 3000. Mã này chỉ ra tiến trình bị kết thúc theo cơ chế console/control-C/session/task stop, chưa xác định được tác nhân. Cấu hình có RestartCount=0 nên nó không tự phục hồi. Giới hạn PT72H là một nguy cơ dừng sau ba ngày; nó không giải thích lần dừng chỉ ít phút sau reboot trong báo cáo này.
+
+File `start-hr.ps1` trên Windows chạy Node với `-NoNewWindow -Wait`, chuyển stdout/stderr sang `logs`, và trả exit 1 khi Node thoát để Scheduler có thể chạy lại. Vì vậy console trống là bình thường khi log được chuyển sang file. Không cần tạo lại dữ liệu hoặc thay thư mục DATA_DIR.
+
+Sau khi đã đối chiếu đúng cấu hình này, mở PowerShell có quyền cập nhật tác vụ (Run as administrator nếu cần), trong thư mục repo:
+
+```powershell
+git pull origin main
+powershell.exe -NoProfile -ExecutionPolicy RemoteSigned -File .\scripts\repair-windows-startup.ps1
+```
+
+Script chỉ cập nhật **tác vụ hiện có HR-Website**, kiểm tra nó trỏ đến `start-hr.ps1` của chính checkout, rồi lưu XML gốc trong `.data\diagnostics\task-backups`. XML backup có thể chứa tham số riêng của tác vụ; giữ ở máy chủ, không đưa lên Git/chat. Script không tạo hoặc ghi đè `start-hr.ps1`, không đổi user/LogonType, không đổi dữ liệu/biến môi trường của ứng dụng và không sửa tác vụ tunnel/DNS.
+
+Thay đổi áp dụng:
+
+- Trigger chuyển từ At startup + Interactive sang At log on của **cùng tài khoản**, trễ 30 giây, phù hợp với tunnel hiện tại cũng chạy khi đăng nhập. Đây là tự chạy sau khi người dùng đăng nhập Windows; không phải dịch vụ chạy trước màn hình đăng nhập.
+- Bỏ giới hạn 72 giờ; thử khởi động lại sau 1 phút, tối đa 999 lần; bật StartWhenAvailable; bỏ điều kiện dừng/không chạy khi dùng pin; IgnoreNew tránh bản chạy trùng.
+- Thêm WindowStyle Hidden vào action để giảm rủi ro đóng nhầm/chọn văn bản trong console, giữ nguyên các arguments còn lại và working directory.
+- Nếu website đã khỏe, không tạo process mới. Nếu port đang bị chương trình khác chiếm, không dừng process đó. Nếu task đang chạy thì chỉ chờ health. Khi chưa chạy, khởi động chính task hiện có rồi kiểm tra health tối đa khoảng một phút.
+
+Nếu báo chưa sẵn sàng, đọc log `.err.log`/`.launch-error.log` mới nhất trong `logs`, hoặc chạy lại công cụ chẩn đoán. `exit 2` nghĩa là settings đã cập nhật nhưng health chưa đạt; không coi là đã sửa xong. Giữ XML backup để có thể khôi phục qua Task Scheduler nếu cần.
+
+DNS mã 9003 từ cả hệ thống/1.1.1.1/8.8.8.8 là lỗi riêng: phải kiểm tra zone và hostname/CNAME của tunnel trong Cloudflare. Script sửa startup không làm bản ghi DNS tự xuất hiện.

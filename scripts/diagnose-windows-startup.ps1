@@ -52,6 +52,7 @@ function Get-TaskResultMeaning {
         2147942402 { 'A referenced executable or file was not found.' }
         2147942667 { 'The working directory is invalid.' }
         2147943726 { 'Task account credentials were rejected.' }
+        3221225786 { 'Process was terminated through a console/control-C or session/task stop. Task history is needed to identify who or what stopped it.' }
         default { 'Check this code and task history in Task Scheduler.' }
     }
 }
