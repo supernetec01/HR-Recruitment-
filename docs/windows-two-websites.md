@@ -24,7 +24,7 @@ Lệnh tạo/cập nhật task **`SuperNet-Websites`**, dùng cùng tài khoản
 Script thực hiện:
 
 1. Khởi động các task `HR-Website` và `Jielien-Cloudflare-Tunnel` nếu chưa Running.
-2. Nếu Docker engine chưa sẵn sàng, mở Docker Desktop từ đường dẫn chuẩn và chờ tối đa khoảng bốn phút (mỗi lệnh Docker có timeout riêng).
+2. Tự tìm Docker Desktop từ tiến trình đang chạy, vị trí Docker CLI, thư mục cài theo máy/tài khoản, registry và shortcut Start Menu/Desktop. Nếu Docker engine chưa sẵn sàng, mở đúng executable đã tìm thấy và chờ tối đa khoảng bốn phút (mỗi lệnh Docker có timeout riêng).
 3. Xác minh container Jielien hiện có, ghi lại restart policy trước thay đổi, rồi đặt `unless-stopped`. Chính sách Docker tự khởi động lại container khi ứng dụng lỗi trong lúc engine hoạt động.
 4. Khởi động container đó nếu đang dừng và kiểm tra nó có publish cổng 3001.
 5. Kiểm tra HR trả `status=ok, demo=false` tại cổng 3000 và Jielien trả HTTP 200 tại cổng 3001. Chỉ in PASS khi cả hai cùng đạt.
@@ -35,7 +35,9 @@ Nếu container không tồn tại trong Docker context của tài khoản này,
 
 Log nằm trong `.data\diagnostics\websites-startup`. Script ghi thời điểm, kết quả và restart policy cũ, không in Docker inspect đầy đủ, token, biến môi trường hoặc raw task arguments. Khi cập nhật task do script quản lý, XML gốc được sao lưu trong cùng thư mục; giữ backup ở máy chủ vì XML có thể chứa tham số riêng. Script từ chối ghi đè task cùng tên nếu không trỏ tới script này/cùng tài khoản.
 
-Nếu Docker Desktop được cài ở chỗ khác, dùng tham số `-DockerDesktopPath` với đường dẫn thật đến file `.exe`; script sẽ lưu tham số đó vào task. Dữ liệu, Docker context và container phải là của cùng tài khoản Windows đang chạy task.
+Nếu bản cũ báo không tìm thấy executable ở đường dẫn mặc định, cập nhật repo rồi chạy lại chính lệnh `-InstallStartup` ở trên. Bản mới tìm cả cài đặt theo tài khoản và ổ đĩa khác. Nếu vẫn chưa tìm thấy, mở Docker Desktop thủ công bằng Start Menu rồi chạy lại; script sẽ lấy đường dẫn từ tiến trình đang chạy. Cũng có thể dùng tham số `-DockerDesktopPath` với đường dẫn thật đến file `.exe`; script sẽ lưu đường dẫn đã xác minh vào task. Dữ liệu, Docker context và container phải là của cùng tài khoản Windows đang chạy task.
+
+Kiểm tra riêng chức năng tìm executable, không cần Docker hoặc sửa tác vụ: `powershell.exe -NoProfile -File .\tests\windows-websites-discovery.ps1` (hoặc dùng `pwsh`). Kiểm tra này dùng các file tạm và mô phỏng nguồn thông tin Windows, không chạy các executable giả lập.
 
 ## Ghép hostname vào đúng ứng dụng
 

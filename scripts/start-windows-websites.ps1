@@ -32,6 +32,108 @@ function Stop-WebsitesStartup {
     throw $startupException
 }
 
+function Resolve-DesktopCandidate {
+    param([string]$Value, [switch]$Explicit)
+    if (-not $Value -or $Value -match '[\r\n]') { return }
+    $value = [Environment]::ExpandEnvironmentVariables($Value.Trim())
+    # DisplayIcon can be quoted and have an icon index; never execute its arguments.
+    $match = [regex]::Match($value, '^(?:"([^"\r\n]+\.exe)"|([^"\r\n]+?\.exe))(?:,\s*-?\d+)?$', 'IgnoreCase')
+    if (-not $match.Success) { return }
+    $path = if ($match.Groups[1].Success) { $match.Groups[1].Value } else { $match.Groups[2].Value }
+    if (-not [IO.Path]::IsPathRooted($path)) { return }
+    if (-not $Explicit -and [IO.Path]::GetFileName($path) -notin @('Docker Desktop.exe', 'DockerDesktop.exe')) { return }
+    if (Test-Path -LiteralPath $path -PathType Leaf) { return [IO.Path]::GetFullPath($path) }
+}
+
+function Get-DockerDesktopRegistryPaths {
+    # Read only Docker application metadata, never Run values or uninstall commands.
+    foreach ($root in @('HKCU:\Software\Microsoft\Windows\CurrentVersion', 'HKLM:\Software\Microsoft\Windows\CurrentVersion', 'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion')) {
+        foreach ($name in @('Docker Desktop.exe', 'DockerDesktop.exe')) {
+            try {
+                $key = Get-Item -LiteralPath ($root + '\App Paths\' + $name) -ErrorAction SilentlyContinue
+                if ($null -ne $key) { $key.GetValue('') }
+            } catch { }
+        }
+        foreach ($key in @(Get-ChildItem -LiteralPath ($root + '\Uninstall') -ErrorAction SilentlyContinue)) {
+            try {
+                if ([string]$key.GetValue('DisplayName') -notmatch '^Docker\s*Desktop(?:\s+\d.*)?$') { continue }
+                $key.GetValue('DisplayIcon')
+                $directory = [string]$key.GetValue('InstallLocation')
+                if ($directory) {
+                    $directory = [Environment]::ExpandEnvironmentVariables($directory.Trim().Trim('"'))
+                    foreach ($name in @('Docker Desktop.exe', 'DockerDesktop.exe')) { Join-Path $directory $name }
+                }
+            } catch { }
+        }
+    }
+}
+
+function Get-DockerDesktopShortcutPaths {
+    $shell = $null
+    try {
+        foreach ($folderName in @('Programs', 'CommonPrograms', 'DesktopDirectory', 'CommonDesktopDirectory')) {
+            $folder = [Environment]::GetFolderPath($folderName)
+            if (-not $folder) { continue }
+            foreach ($relative in @('Docker Desktop.lnk', 'DockerDesktop.lnk', 'Docker\Docker Desktop.lnk', 'Docker Desktop\Docker Desktop.lnk')) {
+                $shortcutPath = Join-Path $folder $relative
+                if (-not (Test-Path -LiteralPath $shortcutPath -PathType Leaf)) { continue }
+                if ($null -eq $shell) { $shell = New-Object -ComObject WScript.Shell }
+                $shortcut = $shell.CreateShortcut($shortcutPath)
+                try { $shortcut.TargetPath } finally { $null = [Runtime.InteropServices.Marshal]::ReleaseComObject($shortcut) }
+            }
+        }
+    } finally { if ($null -ne $shell) { $null = [Runtime.InteropServices.Marshal]::ReleaseComObject($shell) } }
+}
+
+function Get-DockerDesktopInstallDirectories {
+    param([string]$DockerCliPath, [string[]]$ProgramRoots, [string]$LocalAppDataDirectory)
+    $directories = New-Object 'System.Collections.Generic.List[string]'
+    if ($DockerCliPath) {
+        # Docker CLI commonly lives at <installation>\resources\bin\docker.exe.
+        $bin = Split-Path -Parent $DockerCliPath
+        if ((Split-Path -Leaf $bin) -eq 'bin') {
+            $resources = Split-Path -Parent $bin
+            if ((Split-Path -Leaf $resources) -eq 'resources') { $directories.Add((Split-Path -Parent $resources)) }
+        }
+    }
+    foreach ($programRoot in $ProgramRoots) {
+        if ($programRoot) { $directories.Add((Join-Path $programRoot 'Docker\Docker')) }
+    }
+    if ($LocalAppDataDirectory) {
+        foreach ($relative in @('Programs\DockerDesktop', 'Programs\Docker\Docker', 'Docker')) { $directories.Add((Join-Path $LocalAppDataDirectory $relative)) }
+    }
+    $directories.ToArray()
+}
+
+function Find-DockerDesktop {
+    param([string]$RequestedPath, [string]$DockerCliPath)
+    if ($RequestedPath) {
+        $resolved = Resolve-DesktopCandidate -Value $RequestedPath -Explicit
+        if (-not $resolved) { Stop-WebsitesStartup 'The supplied DockerDesktopPath is not an existing executable. Check its actual path.' }
+        return $resolved
+    }
+    foreach ($process in @(Get-Process -Name 'Docker Desktop', 'DockerDesktop' -ErrorAction SilentlyContinue)) {
+        try { $resolved = Resolve-DesktopCandidate -Value $process.Path; if ($resolved) { return $resolved } } catch { }
+    }
+    $directories = @(Get-DockerDesktopInstallDirectories -DockerCliPath $DockerCliPath -ProgramRoots @($env:ProgramFiles, $env:ProgramW6432) -LocalAppDataDirectory $env:LOCALAPPDATA)
+    foreach ($directory in $directories) {
+        foreach ($name in @('Docker Desktop.exe', 'DockerDesktop.exe')) {
+            $resolved = Resolve-DesktopCandidate -Value (Join-Path $directory $name)
+            if ($resolved) { return $resolved }
+        }
+    }
+    try { $registryPaths = @(Get-DockerDesktopRegistryPaths) } catch { $registryPaths = @() }
+    foreach ($value in $registryPaths) {
+        $resolved = Resolve-DesktopCandidate -Value ([string]$value)
+        if ($resolved) { return $resolved }
+    }
+    try { $shortcutPaths = @(Get-DockerDesktopShortcutPaths) } catch { $shortcutPaths = @() }
+    foreach ($value in $shortcutPaths) {
+        $resolved = Resolve-DesktopCandidate -Value ([string]$value)
+        if ($resolved) { return $resolved }
+    }
+}
+
 function Invoke-DockerCommand {
     param([string[]]$CommandArgs, [int]$TimeoutSeconds = 15)
     # Arguments are fixed Docker commands and a validated container name, all without spaces.
@@ -70,7 +172,7 @@ function Wait-DockerEngine {
     param([string]$DesktopPath)
     $engine = Invoke-DockerCommand -CommandArgs @('info', '--format', '{{.OSType}}')
     if ($engine.ExitCode -eq 0) { return }
-    if (@(Get-Process -Name 'Docker Desktop' -ErrorAction SilentlyContinue).Count -eq 0) {
+    if (@(Get-Process -Name 'Docker Desktop', 'DockerDesktop' -ErrorAction SilentlyContinue).Count -eq 0) {
         if (-not $DesktopPath -or -not (Test-Path -LiteralPath $DesktopPath -PathType Leaf)) {
             Stop-WebsitesStartup 'Docker engine is unavailable. Open Docker Desktop in this Windows account, then run the script again.'
         }
@@ -170,15 +272,17 @@ try {
     }
     $JielienDirectory = [IO.Path]::GetFullPath($JielienDirectory).TrimEnd('\')
     if (-not (Test-Path -LiteralPath $JielienDirectory -PathType Container)) { Stop-WebsitesStartup 'The existing Jielien project directory is missing.' }
-    try { $script:DockerExecutable = (Get-Command docker.exe -ErrorAction Stop).Source } catch {
-        $script:DockerExecutable = Join-Path $env:ProgramFiles 'Docker\Docker\resources\bin\docker.exe'
+    try { $script:DockerExecutable = (Get-Command docker.exe -ErrorAction Stop).Source } catch { }
+    $DockerDesktopPath = Find-DockerDesktop -RequestedPath $DockerDesktopPath -DockerCliPath $script:DockerExecutable
+    if (-not $script:DockerExecutable -and $DockerDesktopPath) {
+        $script:DockerExecutable = Join-Path (Split-Path -Parent $DockerDesktopPath) 'resources\bin\docker.exe'
     }
+    if (-not $script:DockerExecutable) { $script:DockerExecutable = Join-Path $env:ProgramFiles 'Docker\Docker\resources\bin\docker.exe' }
     if (-not (Test-Path -LiteralPath $script:DockerExecutable -PathType Leaf)) { Stop-WebsitesStartup 'Docker CLI was not found. Check the existing Docker Desktop installation.' }
-    if (-not $DockerDesktopPath) { $DockerDesktopPath = Join-Path $env:ProgramFiles 'Docker\Docker\Docker Desktop.exe' }
-    if ($DockerDesktopPath -notmatch '(?i)\.exe$') { Stop-WebsitesStartup 'DockerDesktopPath must point to the Docker Desktop executable.' }
-    if ($InstallStartup -and -not (Test-Path -LiteralPath $DockerDesktopPath -PathType Leaf)) {
-        Stop-WebsitesStartup 'Docker Desktop executable was not found at the standard path. Supply -DockerDesktopPath with its actual .exe path before installing startup.'
+    if ($InstallStartup -and -not $DockerDesktopPath) {
+        Stop-WebsitesStartup 'Could not locate Docker Desktop. Open Docker Desktop manually, then run this command again; or supply -DockerDesktopPath with its actual .exe path.'
     }
+    if ($DockerDesktopPath) { Write-StartupLog ('Docker Desktop executable: ' + $DockerDesktopPath) }
     # Resolve the task before creating any startup configuration.
     $null = Get-ScheduledTask -TaskName 'Jielien-Cloudflare-Tunnel' -TaskPath '\'
     if ($InstallStartup) { Install-WebsitesStartup -ProjectDirectory $JielienDirectory -Name $ContainerName -DesktopPath $DockerDesktopPath }
