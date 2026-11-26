@@ -104,6 +104,8 @@ API dùng OpenAI Responses với `store:false`; đây không phải cam kết v�
 
 ## Dữ liệu và vận hành
 
+Máy Windows chạy đồng thời HR ở cổng 3000 và website Jielien trong Docker ở cổng 3001: xem [cài tự khởi động và ghép hostname vào đúng ứng dụng](docs/windows-two-websites.md).
+
 - Nội bộ mặc định: `.data/internal/recruitment.sqlite` và `.data/internal/documents/`. Không tạo user/ứng viên giả; Admin được tạo bằng setup, các dữ liệu khác qua giao diện.
 - Dữ liệu được giữ sau khi khởi động lại. **Không xóa `.data/` để cập nhật.** GitHub chỉ lưu source, không lưu tài khoản/mật khẩu/CV. Khi clone máy khác cần setup mới hoặc khôi phục database đã sao lưu.
 - Sao lưu nhất quán: dừng dịch vụ rồi sao lưu toàn bộ `.data/internal/` vào vùng riêng được bảo vệ; khôi phục cả SQLite và documents cùng nhau. Chưa có backup tự động.
