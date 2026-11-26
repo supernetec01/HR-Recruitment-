@@ -100,7 +100,33 @@ export function registerInternalRoutes(app, { db, staff, editor, demo, getCandid
     u.name AS interviewer_name,c.full_name AS candidate_name,c.id AS candidate_id,j.title AS job_title
     FROM interviews i JOIN users u ON u.id=i.interviewer_id JOIN applications a ON a.id=i.application_id
     JOIN candidates c ON c.id=a.candidate_id JOIN jobs j ON j.id=a.job_id`;
-  app.get('/api/v1/interviews', staff, (req, res) => res.json(db.prepare(`${interviewQuery} ORDER BY starts_at`).all().map(interview=>withInterviewEvaluation(db,interview))));
+  // Reuse the recorded completion event for existing and new interviews.
+  const listInterviews = db.prepare(`
+    WITH completions AS (
+      SELECT json_extract(CASE WHEN json_valid(details) THEN details END, '$.interviewId') AS interview_id,
+        MAX(created_at) AS completed_at
+      FROM audit_logs WHERE action = 'interview.completed'
+      GROUP BY interview_id
+    )
+    SELECT interview.*, completions.completed_at
+    FROM (${interviewQuery}) AS interview
+    LEFT JOIN completions ON completions.interview_id = interview.id AND interview.status = 'completed'
+    ORDER BY interview.starts_at
+  `);
+  app.get('/api/v1/interviews', staff, (req, res) => {
+    const currentTime = Date.now();
+    const reminderCutoff = currentTime - 60 * 60 * 1000;
+    const interviews = listInterviews.all().map(interview => {
+      const row = withInterviewEvaluation(db, interview);
+      return {
+        ...row,
+        evaluation_reminder_due: row.interviewer_id === req.user.id && row.status === 'completed' &&
+          !row.evaluation && row.completed_at !== null && Date.parse(row.completed_at) <= reminderCutoff &&
+          Date.parse(row.starts_at) <= currentTime,
+      };
+    });
+    res.json(interviews);
+  });
   const bookingSchema = z.object({
     applicationId: z.string().min(1), interviewerId: z.string().min(1), startsAt: z.iso.datetime(),
     durationMinutes: z.coerce.number().int().min(15).max(240).optional(), endsAt: z.iso.datetime().optional(),
@@ -143,10 +169,10 @@ export function registerInternalRoutes(app, { db, staff, editor, demo, getCandid
     }); res.status(201).json(result);
   });
   app.patch('/api/v1/interviews/:id', staff, editor, (req, res) => {
-    const previous = db.prepare('SELECT i.*,a.candidate_id FROM interviews i JOIN applications a ON a.id=i.application_id WHERE i.id=?').get(req.params.id);
-    if (!previous) problem(404, 'Không tìm thấy lịch.');
-    if (previous.status !== 'scheduled') problem(409, 'Lịch này đã hoàn thành hoặc đã hủy.');
     transaction(db, () => {
+      const previous = db.prepare('SELECT i.*,a.candidate_id FROM interviews i JOIN applications a ON a.id=i.application_id WHERE i.id=?').get(req.params.id);
+      if (!previous) problem(404, 'Không tìm thấy lịch.');
+      if (previous.status !== 'scheduled') problem(409, 'Lịch này đã hoàn thành hoặc đã hủy.');
       if (req.body.status) {
         const { status } = z.object({ status: z.enum(['completed','cancelled']) }).parse(req.body);
         if (status === 'completed' && new Date(previous.starts_at) > new Date()) problem(409, 'Chưa đến giờ bắt đầu phỏng vấn.');

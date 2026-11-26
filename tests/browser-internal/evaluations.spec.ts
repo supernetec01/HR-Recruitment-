@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fork, type ChildProcess } from 'node:child_process';
 
-type Fixture={candidateId:string;interviewId:string;name:string};
+type Fixture={candidateId:string;interviewId:string;name:string;completedAt:string|null};
 let directory:string,worker:ChildProcess,baseURL:string,fixtures:Fixture[],reviewerId:string;const sessions:Record<string,APIRequestContext>={};
 const password=process.env.SUPERNET_E2E_PASSWORD!;
 const sample={score:8.5,result:'pass',comments:'Có kinh nghiệm xây dựng nội dung và trình bày rõ các công việc đã thực hiện.',expectedRevision:0};
@@ -18,10 +18,35 @@ async function open(page:Page,fixture:Fixture,role='interviewer'){
   await page.context().addCookies((await sessions[role].storageState()).cookies);await page.goto(`${baseURL}/?page=candidates&candidate=${fixture.candidateId}`);await page.locator('.detail-tabs').getByRole('button',{name:/^Đánh giá/}).click();
 }
 const save=(fixture:Fixture,data=sample)=>sessions.interviewer.put(`/api/v1/interviews/${fixture.interviewId}/evaluation`,{headers:{'Idempotency-Key':crypto.randomUUID()},data});
+test('completed interviews sort and filter by completion date, with reminders limited to the assigned interviewer', async ({ page }) => {
+  await page.context().addCookies((await sessions.other.storageState()).cookies);
+  await page.goto(`${baseURL}/?page=interviews`);
+  await page.locator('.list-tabs').getByRole('button', { name: 'Đã hoàn thành', exact: true }).click();
+  const names = page.locator('.interview-list-row .interview-candidate button');
+  await expect(names).toHaveText([fixtures[2].name, fixtures[0].name, fixtures[3].name, fixtures[1].name]);
+  const period = page.getByLabel('Lọc theo ngày hoàn thành');
+  await period.selectOption('7');
+  await expect(names).toHaveText([fixtures[2].name, fixtures[0].name, fixtures[3].name]);
+  await period.selectOption('day');
+  const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' });
+  await page.getByLabel('Ngày hoàn thành', { exact: true }).fill(day.format(new Date(fixtures[3].completedAt!)));
+  await expect(names).toHaveText([fixtures[3].name]);
+  await page.getByRole('button', { name: /^Thông báo:/ }).click();
+  await expect(page.getByRole('dialog')).toContainText('Không có yêu cầu mới cần xử lý.');
+  await expect(page.getByRole('heading', { name: 'Yêu cầu đánh giá phỏng vấn' })).toHaveCount(0);
+});
 test('assigned interviewer rates a completed interview from the list and can edit the saved outcome',async({page})=>{
   const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));const f=fixtures[0];await page.context().addCookies((await sessions.interviewer.storageState()).cookies);await page.goto(`${baseURL}/?page=interviews`);await page.locator('.list-tabs').getByRole('button',{name:'Đã hoàn thành',exact:true}).click();
-  const row=page.locator('.interview-list-row').filter({hasText:f.name});await row.getByRole('button',{name:`Đánh giá ${f.name}`,exact:true}).click();const dialog=page.getByRole('dialog');
+  const row=page.locator('.interview-list-row').filter({hasText:f.name});
+  const bell=page.getByRole('button',{name:/^Thông báo:/});
+  const dialog=page.getByRole('dialog');
+  await bell.click();
+  await expect(dialog).not.toContainText(fixtures[2].name);
+  await dialog.getByRole('button',{name:`Đánh giá ${f.name}`,exact:true}).click();
   await dialog.getByLabel(/^Điểm phỏng vấn/).fill('8,5');await dialog.getByLabel(/^Kết quả đề xuất/).selectOption('pass');await dialog.getByLabel(/^Nhận xét phỏng vấn/).fill(sample.comments);await dialog.getByRole('button',{name:'Lưu đánh giá',exact:true}).click();await expect(dialog).toHaveCount(0);await expect(row.locator('.evaluation-badge')).toContainText('8,5/10');await expect(row.locator('.evaluation-result')).toHaveText('Đạt');
+  await bell.click();
+  await expect(dialog).not.toContainText(f.name);
+  await dialog.getByRole('button',{name:'Đóng',exact:true}).click();
   await row.getByRole('button',{name:`Chỉnh sửa đánh giá ${f.name}`,exact:true}).click();await dialog.getByLabel(/^Điểm phỏng vấn/).fill('9');await dialog.getByLabel(/^Kết quả đề xuất/).selectOption('follow_up');await dialog.getByLabel(/^Nhận xét phỏng vấn/).fill('Đề xuất trao đổi thêm về kinh nghiệm vận hành chiến dịch.');await dialog.getByRole('button',{name:'Lưu đánh giá',exact:true}).click();await expect(dialog).toHaveCount(0);await expect(row.locator('.evaluation-badge')).toContainText('9/10');await expect(row.locator('.evaluation-result')).toHaveText('Cần phỏng vấn thêm');
   await page.reload();await page.locator('.list-tabs').getByRole('button',{name:'Đã hoàn thành',exact:true}).click();await expect(row.locator('.evaluation-badge')).toContainText('9/10');expect((await(await sessions.admin.get(`/api/v1/interviews/${f.interviewId}/evaluation`)).json()).evaluation.reviewer_id).toBe(reviewerId);expect(errors).toEqual([]);
 });
@@ -46,4 +71,15 @@ test('zero scores display correctly and form and cards fit 320–1440 px in both
 });
 test('scheduled and cancelled interviews offer no evaluation action',async({page})=>{
   for(const fixture of fixtures.slice(4)){await open(page,fixture);await expect(page.getByRole('heading',{name:'Chưa có buổi phỏng vấn đã hoàn thành',exact:true})).toBeVisible();await expect(page.locator('.evaluation-card')).toHaveCount(0);expect((await save(fixture)).status()).toBe(409);}
+});
+test('auto-cancelled interviews show the no-show reason and the application stage', async ({ page }) => {
+  const missed = fixtures[6];
+  await page.context().addCookies((await sessions.interviewer.storageState()).cookies);
+  await page.goto(`${baseURL}/?page=interviews`);
+  await page.locator('.list-tabs').getByRole('button', { name: 'Đã hủy', exact: true }).click();
+  const row = page.locator('.interview-list-row').filter({ hasText: missed.name });
+  await expect(row).toContainText('Tự hủy · Không tham gia phỏng vấn');
+  await expect(page.locator('.interview-list-row').filter({ hasText: fixtures[5].name })).not.toContainText('Tự hủy');
+  await row.getByRole('button', { name: missed.name }).click();
+  await expect(page.locator('.application-card .stage')).toHaveText('Không tham gia phỏng vấn');
 });

@@ -35,6 +35,36 @@ before(async()=>{
   const job=await request('/jobs',{method:'POST',data:{title:'JD đánh giá',department:'Marketing',location:'TP. Hồ Chí Minh',description:'Mô tả công việc dùng riêng cho kiểm thử đánh giá phỏng vấn.',openings:1},idem:randomUUID()});assert.equal(job.status,201);jobId=job.body.id;
 });
 after(async()=>{await new Promise(resolve=>server.close(resolve));db.close();rmSync(directory,{recursive:true,force:true});});
+test('evaluation reminder appears one hour after the recorded completion only for the assigned interviewer', async ({ mock }) => {
+  const scheduled = await fixture('scheduled');
+  const interview = await fixture();
+  const find = async (role, id = interview.id) => {
+    const response = await request('/interviews', { session: sessions[role] });
+    assert.equal(response.status, 200);
+    return response.body.find(row => row.id === id);
+  };
+  const completionLog = db.prepare("SELECT created_at FROM audit_logs WHERE candidate_id=? AND action='interview.completed'").get(interview.candidate.id);
+  const initial = await find('interviewer');
+  assert.equal(initial.completed_at, completionLog.created_at);
+  assert.equal(initial.evaluation_reminder_due, false);
+  assert.equal((await find('interviewer', scheduled.id)).completed_at, null);
+  assert.equal((await find('interviewer', scheduled.id)).evaluation_reminder_due, false);
+
+  mock.timers.enable({ apis: ['Date'], now: Date.parse(initial.completed_at) + 3600000 - 1 });
+  try {
+    assert.equal((await find('interviewer')).evaluation_reminder_due, false);
+    mock.timers.tick(1);
+    assert.equal((await find('interviewer')).evaluation_reminder_due, true);
+    assert.equal((await find('other')).evaluation_reminder_due, false);
+    assert.equal((await find('admin')).evaluation_reminder_due, false);
+    assert.equal((await save(interview)).status, 200);
+    const evaluated = await find('interviewer');
+    assert.equal(evaluated.completed_at, initial.completed_at);
+    assert.equal(evaluated.evaluation_reminder_due, false);
+  } finally {
+    mock.timers.reset();
+  }
+});
 test('assigned interviewer saves comments, outcome and a score out of ten without changing hiring decisions',async()=>{
   const i=await fixture();const r=await save(i);assert.equal(r.status,200);assert.equal(r.body.evaluation.score,8.5);assert.equal(r.body.evaluation.reviewer_id,users.interviewer.id);assert.equal(r.body.evaluation.revision,1);
   const detail=(await request(`/candidates/${i.candidate.id}`)).body;assert.equal(detail.interviews[0].evaluation.comments,content.comments);assert.equal(detail.applications[0].stage,'interviewed');assert.equal(detail.history.filter(log=>log.action==='interview.evaluated').length,1);

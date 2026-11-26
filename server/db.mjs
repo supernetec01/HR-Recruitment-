@@ -23,7 +23,7 @@ export function verifyPassword(password, stored) {
   const expected = Buffer.from(key, 'hex');
   return expected.length === actual.length && timingSafeEqual(expected, actual);
 }
-export const STAGES = ['new', 'screening', 'contacted', 'interview_requested', 'scheduled', 'interviewed', 'review', 'offered', 'hired', 'rejected'];
+export const STAGES = ['new', 'screening', 'contacted', 'interview_requested', 'scheduled', 'interviewed', 'no_show', 'review', 'offered', 'hired', 'rejected'];
 export const SOURCES = ['Website', 'Facebook', 'Zalo', 'Email', 'TopCV', 'Giới thiệu', 'Hồ sơ giấy', 'Khác'];
 
 export function openDatabase(directory, demo = false) {
@@ -147,6 +147,7 @@ export function openDatabase(directory, demo = false) {
   if (!interviewColumns.has('contact_evidence')) db.exec("ALTER TABLE interviews ADD COLUMN contact_evidence TEXT NOT NULL DEFAULT ''");
   if (!interviewColumns.has('contacted_at')) db.exec('ALTER TABLE interviews ADD COLUMN contacted_at TEXT');
   if (!interviewColumns.has('contacted_by')) db.exec('ALTER TABLE interviews ADD COLUMN contacted_by TEXT REFERENCES users(id)');
+  if (!interviewColumns.has('cancellation_reason')) db.exec('ALTER TABLE interviews ADD COLUMN cancellation_reason TEXT');
   const requestColumns = new Set(db.prepare('PRAGMA table_info(interview_requests)').all().map(c => c.name));
   if (!requestColumns.has('preferred_interviewer_id')) db.exec('ALTER TABLE interview_requests ADD COLUMN preferred_interviewer_id TEXT REFERENCES users(id)');
   if (!interviewColumns.has('request_id')) db.exec('ALTER TABLE interviews ADD COLUMN request_id TEXT REFERENCES interview_requests(id)');

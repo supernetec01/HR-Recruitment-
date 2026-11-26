@@ -4,7 +4,7 @@ import { t } from './locale';
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, NavLink, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowDownToLine, ArrowRight, ArrowUpRight, Bell, BriefcaseBusiness, CalendarDays, ChartNoAxesCombined, Check, CheckCheck, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, Clock3, ExternalLink, FileCheck2, FilePlus2, FileText, Filter, GitMerge, Globe2, LayoutDashboard, LayoutGrid, List, LoaderCircle, LogOut, Menu, MoreHorizontal, Plus, Search, Settings2, ShieldCheck, Upload, UserRoundCheck, UsersRound, X, Eye, EyeOff } from 'lucide-react';
-import { api, ApiError, date, errorMessage, json, SOURCES, STAGES, time } from './api';
+import { api, ApiError, date, dayKey, errorMessage, json, SOURCES, STAGES, time } from './api';
 import { Alert, Avatar, Empty, Field, Modal, Spinner, Stage } from './ui';
 import { CandidateForm, InterviewForm, JobForm, ResolveForm } from './forms';
 import CandidateDetail from './detail';
@@ -17,6 +17,7 @@ import type { Candidate, Interview, InterviewRequest, Job, Submission, User } fr
 import { LanguageSwitcher, useLanguage } from './locale';
 import { isNewCandidate, compareCandidates, candidateReceivedAt } from './candidate-priority';
 import { RecruitmentReports } from './recruitment-reports';
+import { WorkspaceNotifications } from './workspace-notifications';
 
 const titles: Record<string, string> = { candidates: 'Ứng viên', overview: 'Tổng quan', pipeline: 'Pipeline tuyển dụng', requests: 'Yêu cầu phỏng vấn', interviews: 'Lịch phỏng vấn', jobs: 'Vị trí tuyển dụng', reports: 'Báo cáo tuyển dụng', settings: 'Thành viên & phân quyền', brands: 'Thương hiệu & cửa hàng' };
 function Source({ value }: { value: string }) { return <span className={`source source-${value.toLowerCase().replace(/\s/g, '-')}`}><span className="source-logo">{value === 'Website' ? <Globe2 size={13}/> : value === 'Facebook' ? 'f' : value === 'Email' ? '@' : value === 'TopCV' ? 'T' : value === 'Zalo' ? 'Z' : <UsersRound size={12}/>}</span>{t(value)}</span>; }
@@ -27,17 +28,27 @@ export default function App() {
   const [candidates, setCandidates] = useState<Candidate[]>([]), [jobs, setJobs] = useState<Job[]>([]), [users, setUsers] = useState<User[]>([]), [interviews, setInterviews] = useState<Interview[]>([]), [submissions, setSubmissions] = useState<Submission[]>([]);
   const [requests, setRequests] = useState<InterviewRequest[]>([]), [bookingRequest, setBookingRequest] = useState<InterviewRequest | undefined>(), [editingInterview, setEditingInterview] = useState<Interview | undefined>(), [needsSetup, setNeedsSetup] = useState(false);
   const [loaded, setLoaded] = useState(false), [error, setError] = useState(''), [mobileNav, setMobileNav] = useState(false), [help, setHelp] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [evaluationInterview,setEvaluationInterview] = useState<Interview|null>(null);
   const [candidateForm, setCandidateForm] = useState<'manual' | 'upload' | null>(null), [jobForm, setJobForm] = useState<Job | 'new' | null>(null), [interviewForm, setInterviewForm] = useState(false), [resolveSubmission, setResolveSubmission] = useState<Submission | null>(null);
   const [toast, setToast] = useState(''); const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [params, setParams] = useSearchParams(); const page = params.get('page') || 'overview', detailId = params.get('candidate');
   const notify = useCallback((message: string) => { setToast(message); if (toastTimer.current) clearTimeout(toastTimer.current); toastTimer.current = setTimeout(() => setToast(''), 5000); }, []);
   useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); }, []);
+  const loadVersion = useRef(0);
   const load = useCallback(async () => {
+    const version = ++loadVersion.current;
     try {
       const [cs, js, us, its, ss, rs] = await Promise.all([api<Candidate[]>('/candidates'), api<Job[]>('/jobs'), api<User[]>('/users'), api<Interview[]>('/interviews'), api<Submission[]>('/submissions'), api<InterviewRequest[]>('/interview-requests')]);
+      if (version !== loadVersion.current) return;
       setCandidates(cs); setJobs(js); setUsers(us); setInterviews(its); setSubmissions(ss); setRequests(rs); setError('');
-    } catch (err) { if (err instanceof ApiError && err.status === 401) setUser(null); else setError(errorMessage(err)); } finally { setLoaded(true); }
+    } catch (err) {
+      if (version !== loadVersion.current) return;
+      if (err instanceof ApiError && err.status === 401) setUser(null);
+      else setError(errorMessage(err));
+    } finally {
+      if (version === loadVersion.current) setLoaded(true);
+    }
   }, []);
   useEffect(() => { let active = true; (async () => {
     try { const config = await api<{ demo: boolean; needsSetup: boolean }>('/config'); if (!active) return; setDemo(config.demo); setNeedsSetup(config.needsSetup);
@@ -54,6 +65,10 @@ export default function App() {
   if (!user) return <Login error={authError} demo={demo} needsSetup={needsSetup} onLogin={u => { setLoaded(false); setUser(u); }}/ >;
   const editable = ['admin','hr'].includes(user.role);
   const upcoming = interviews.filter(i => i.status === 'scheduled' && new Date(i.starts_at) > new Date());
+  const pendingRequests = requests.filter(request => request.status === 'pending').length;
+  const evaluationReminders = interviews
+    .filter(interview => interview.interviewer_id === user.id && interview.evaluation_reminder_due)
+    .sort(compareCompletionTime);
   const navs = [
     ['overview', LayoutDashboard, 'Tổng quan'], ['candidates', UsersRound, 'Quản lý ứng viên'], ['pipeline', LayoutGrid, 'Pipeline tuyển dụng'], ['requests', Bell, 'Yêu cầu phỏng vấn'], ['interviews', CalendarDays, 'Lịch phỏng vấn'], ['jobs', BriefcaseBusiness, 'Vị trí tuyển dụng'],
   ] as const;
@@ -65,7 +80,13 @@ export default function App() {
       <div className="sidebar-bottom"><Link className="sidebar-careers" to="/tuyen-dung" target="_blank">{t("Trang tuyển dụng")}<ArrowUpRight size={16}/></Link>
       {demo && <div className="demo-indicator"><span/>{t("Dữ liệu minh họa · Không gian demo")}</div>}<button className="sidebar-user" onClick={() => go('settings')}><Avatar name={user.name} small/><span><strong>{user.name}</strong><small>{user.role === 'admin' ? t(ROLE_NAMES[user.role]) : user.username}</small></span><ChevronDown size={16}/></button></div>
     </aside>
-    <div className="main-shell"><header className="topbar"><div className="breadcrumb"><button className="icon-button mobile-menu" aria-label={t("Mở menu")} onClick={() => setMobileNav(true)}><Menu size={21}/></button><span>{t("Không gian làm việc")}</span><ChevronRight size={14}/><strong>{detailId ? t("Hồ sơ ứng viên") : (page === 'settings' && user.role !== 'admin' ? t("Tài khoản") : t(titles[page])) || t("Ứng viên")}</strong></div><div className="topbar-actions"><LanguageSwitcher/><span className="today"><CalendarDays size={15}/>{date(new Date().toISOString())}</span><span className="topbar-divider"/><button className="icon-button" aria-label={t("Hướng dẫn sử dụng")} onClick={() => setHelp(true)}><CircleHelp size={19}/></button><button className="icon-button notification-button" aria-label={t("Thông báo: {p0} yêu cầu phỏng vấn, {p1} hồ sơ chờ xác minh",{p0:requests.filter(r => r.status === 'pending').length,p1:submissions.length})} onClick={() => { if (requests.some(r => r.status === 'pending')) go('requests'); else if (submissions.length) setParams({ page: 'candidates', tab: 'pending' }); else notify('Không có yêu cầu mới cần xử lý.'); }}><Bell size={19}/>{(submissions.length > 0 || requests.some(r => r.status === 'pending')) && <span className="notification-dot"/>}</button><Avatar name={user.name} small/></div></header>
+    <div className="main-shell"><header className="topbar"><div className="breadcrumb"><button className="icon-button mobile-menu" aria-label={t("Mở menu")} onClick={() => setMobileNav(true)}><Menu size={21}/></button><span>{t("Không gian làm việc")}</span><ChevronRight size={14}/><strong>{detailId ? t("Hồ sơ ứng viên") : (page === 'settings' && user.role !== 'admin' ? t("Tài khoản") : t(titles[page])) || t("Ứng viên")}</strong></div><div className="topbar-actions"><LanguageSwitcher/><span className="today"><CalendarDays size={15}/>{date(new Date().toISOString())}</span><span className="topbar-divider"/><button className="icon-button" aria-label={t("Hướng dẫn sử dụng")} onClick={() => setHelp(true)}><CircleHelp size={19}/></button><button
+      className="icon-button notification-button" aria-haspopup="dialog"
+      aria-label={t('Thông báo: {p0} yêu cầu phỏng vấn, {p1} hồ sơ chờ xác minh, {p2} yêu cầu đánh giá', {
+        p0: pendingRequests, p1: submissions.length, p2: evaluationReminders.length,
+      })}
+      onClick={() => { setNotificationsOpen(true); void load(); }}
+    ><Bell size={19}/>{(pendingRequests > 0 || submissions.length > 0 || evaluationReminders.length > 0) && <span className="notification-dot"/>}</button><Avatar name={user.name} small/></div></header>
       <main className="workspace-main">{!loaded ? <Spinner/> : error ? <div className="error-page"><Alert>{t(error)}</Alert><button className="button secondary" onClick={() => void load()}>{t("Thử tải lại dữ liệu")}</button></div> : detailId ? <CandidateDetail key={detailId} id={detailId} user={user} users={users} jobs={jobs} onBack={() => go('candidates')} onRefresh={() => void load()} notify={notify}/> : <>
         {page === 'candidates' && <CandidatesPage candidates={candidates} jobs={jobs} users={users} submissions={submissions} user={user} onAdd={setCandidateForm} onOpen={openCandidate} onResolve={setResolveSubmission} onRefresh={() => void load()} notify={notify}/>}
         {page === 'overview' && <InternalDashboard user={user} candidates={candidates} interviews={interviews} requests={requests} onOpen={openCandidate} onSchedule={r => { setBookingRequest(r); setEditingInterview(undefined); setInterviewForm(true); }} onEdit={editable ? i => { setEditingInterview(i); setBookingRequest(undefined); setInterviewForm(true); } : undefined} go={go} onRefresh={() => void load()}/>}
@@ -81,6 +102,13 @@ export default function App() {
     {toast && <div className="toast" role="status"><span><Check size={17}/></span>{t(toast)}<button aria-label={t("Đóng thông báo")} onClick={() => setToast('')}><X size={16}/></button></div>}
     {candidateForm && <CandidateForm jobs={jobs} users={users} user={user} uploadFirst={candidateForm === 'upload'} onClose={() => setCandidateForm(null)} onSaved={saved}/>}
     {resolveSubmission && <ResolveForm submission={resolveSubmission} onClose={() => setResolveSubmission(null)} onSaved={saved}/>}
+    {notificationsOpen && <WorkspaceNotifications
+      evaluations={evaluationReminders} requests={pendingRequests} submissions={submissions.length} user={user}
+      onClose={() => setNotificationsOpen(false)}
+      onEvaluation={interview => { setNotificationsOpen(false); setEvaluationInterview(interview); }}
+      onRequests={() => { setNotificationsOpen(false); go('requests'); }}
+      onSubmissions={() => { setNotificationsOpen(false); setParams({ page: 'candidates', tab: 'pending' }); }}
+    />}
     {evaluationInterview && <InterviewEvaluationModal interview={evaluationInterview} onClose={() => setEvaluationInterview(null)} onSaved={() => {setEvaluationInterview(null);void load();notify(t("Đã lưu đánh giá phỏng vấn."));}}/>}
     {jobForm && <JobForm existing={jobForm === 'new' ? undefined : jobForm} onClose={() => setJobForm(null)} onSaved={() => { setJobForm(null); void load(); notify('Đã lưu JD tuyển dụng.'); }}/>}
     {interviewForm && <InterviewForm candidates={candidates} users={users} request={bookingRequest} existing={editingInterview} onClose={() => setInterviewForm(false)} onSaved={() => { setInterviewForm(false); void load(); notify('Đã đặt lịch phỏng vấn.'); }}/>}
@@ -149,15 +177,86 @@ function Pipeline({ candidates, editable, onOpen, onRefresh, notify }: { candida
   const applications = candidates.flatMap(c => c.applications.map(a => ({ ...a, candidate: c })));
   return <><PageHeading title={t("Pipeline tuyển dụng")} subtitle={t("Theo dõi ứng viên theo giai đoạn xử lý.")}/><div className="info-note pipeline-note"><ShieldCheck size={18}/><span>{t("Kéo thả để chuyển giai đoạn. Gửi offer và tuyển dụng cần Boss phê duyệt; quy trình duyệt sẽ được triển khai ở giai đoạn tiếp theo.")}</span></div><div className="pipeline-board">{Object.entries(STAGES).filter(([s]) => s !== 'rejected').map(([stage, info]) => {
     const items = applications.filter(a => a.stage === stage), locked = ['offered','hired'].includes(stage);
-    return <section className={`pipeline-column ${dragging && !locked ? 'droppable' : ''}`} key={stage} onDragOver={e => { if (editable && !locked) e.preventDefault(); }} onDrop={e => { e.preventDefault(); if (!locked) void drop(stage, e.dataTransfer.getData('text/plain')); }}><div className="pipeline-heading"><span className={`pipeline-stage-dot ${info.color}`}/><h3>{t(info.label)}</h3><span>{items.length}</span></div><div className="pipeline-items">{items.map(a => <article className="pipeline-card" key={a.id} draggable={editable && !locked && !busy} onDragStart={e => { e.dataTransfer.setData('text/plain',a.id); setDragging(a.id); }} onDragEnd={() => setDragging('')}><div className="pipeline-profile"><Avatar name={a.candidate.full_name} small/><button onClick={() => onOpen(a.candidate.id)}>{a.candidate.full_name || t("Chưa có tên")}</button><ArrowUpRight size={14}/></div><p>{a.job_title}</p><Source value={a.source}/>{editable && !locked && <select aria-label={t("Chuyển giai đoạn {p0}",{p0:a.candidate.full_name})} value={stage} disabled={busy} onChange={e => void drop(e.target.value,a.id)}>{Object.entries(STAGES).filter(([s]) => !['offered','hired','rejected','interview_requested','scheduled'].includes(s) || s === stage).map(([s,v]) => <option value={s} key={s}>{t(v.label)}</option>)}</select>}<footer><span>{date(a.received_at).slice(0,5)}</span><span><FileText size={13}/>{a.candidate.documents.length}</span></footer></article>)}{!items.length && <p className="pipeline-empty">{locked ? t("Chưa có ứng viên") : t("Kéo lượt ứng tuyển vào đây")}</p>}</div></section>;
+    const canDrop = !locked && stage !== 'no_show';
+    return <section className={`pipeline-column ${dragging && canDrop ? 'droppable' : ''}`} key={stage} onDragOver={e => { if (editable && canDrop) e.preventDefault(); }} onDrop={e => { e.preventDefault(); if (canDrop) void drop(stage, e.dataTransfer.getData('text/plain')); }}><div className="pipeline-heading"><span className={`pipeline-stage-dot ${info.color}`}/><h3>{t(info.label)}</h3><span>{items.length}</span></div><div className="pipeline-items">{items.map(a => <article className="pipeline-card" key={a.id} draggable={editable && !locked && !busy} onDragStart={e => { e.dataTransfer.setData('text/plain',a.id); setDragging(a.id); }} onDragEnd={() => setDragging('')}><div className="pipeline-profile"><Avatar name={a.candidate.full_name} small/><button onClick={() => onOpen(a.candidate.id)}>{a.candidate.full_name || t("Chưa có tên")}</button><ArrowUpRight size={14}/></div><p>{a.job_title}</p><Source value={a.source}/>{editable && !locked && <select aria-label={t("Chuyển giai đoạn {p0}",{p0:a.candidate.full_name})} value={stage} disabled={busy} onChange={e => void drop(e.target.value,a.id)}>{Object.entries(STAGES).filter(([s]) => !['offered','hired','rejected','interview_requested','scheduled','no_show'].includes(s) || s === stage).map(([s,v]) => <option value={s} key={s}>{t(v.label)}</option>)}</select>}<footer><span>{date(a.received_at).slice(0,5)}</span><span><FileText size={13}/>{a.candidate.documents.length}</span></footer></article>)}{!items.length && <p className="pipeline-empty">{!canDrop ? t("Chưa có ứng viên") : t("Kéo lượt ứng tuyển vào đây")}</p>}</div></section>;
   })}</div></>;
 }
 
+function compareCompletionTime(a: Interview, b: Interview) {
+  return (b.completed_at || '').localeCompare(a.completed_at || '') || b.starts_at.localeCompare(a.starts_at);
+}
+
 function InterviewsPage({ interviews, user, onEvaluation, editable, onAdd, onOpen, onRefresh, notify }: { interviews: Interview[]; user:User; onEvaluation:(interview:Interview)=>void; editable: boolean; onAdd: () => void; onOpen: (s: string) => void; onRefresh: () => void; notify: (s: string) => void }) {
-  const [filter,setFilter] = useState('scheduled');
-  const visible = interviews.filter(i => filter === 'all' || i.status === filter);
-  async function update(i: Interview,status: string) { if (status === 'cancelled' && !window.confirm('Bạn muốn hủy lịch phỏng vấn này?')) return; try { await api(`/interviews/${i.id}`,{ method: 'PATCH', body: json({ status }) }); onRefresh(); notify('Đã cập nhật lịch phỏng vấn.'); } catch(err) { notify(errorMessage(err)); } }
-  return <><PageHeading title={t("Lịch phỏng vấn")} subtitle={t("Lịch đã đặt, đã hoàn thành và đã hủy · UTC+7.")} actions={editable && <button className="button primary" onClick={onAdd}><Plus size={17}/>{t("Đặt lịch phỏng vấn")}</button>}/><section className="panel interview-panel"><div className="list-top"><div className="list-tabs">{[['scheduled','Đã lên lịch'],['completed','Đã hoàn thành'],['cancelled','Đã hủy'],['all','Tất cả']].map(([v,label]) => <button className={filter === v ? 'active' : ''} onClick={() => setFilter(v)} key={v}>{t(label)}</button>)}</div><span className="muted">{t("Dạng danh sách")}</span></div>{!visible.length && <Empty title={t("Chưa có lịch trong nhóm này")} icon={<CalendarDays size={26}/>}>{t("Lịch mới sẽ xuất hiện tại đây sau khi HR tạo.")}</Empty>}{visible.map(i => <article className="interview-list-row" key={i.id}><div className="interview-date"><strong>{new Date(i.starts_at).toLocaleDateString('vi-VN',{day:'2-digit',timeZone:'Asia/Bangkok'})}</strong><span>{t("Tháng ")}{new Date(i.starts_at).toLocaleDateString('vi-VN',{month:'2-digit',timeZone:'Asia/Bangkok'})}</span></div><div className="interview-time"><strong>{time(i.starts_at)} – {time(i.ends_at)}</strong><small>{i.mode}</small></div><div className="interview-candidate"><button onClick={() => onOpen(i.candidate_id)}>{i.candidate_name}</button><p>{i.job_title}</p><small>{i.interviewer_name} · {i.location}</small></div>{i.status === 'completed' && <div className="interview-evaluation-actions">{i.evaluation && <EvaluationBadge evaluation={i.evaluation}/>}<EvaluationButton interview={i} user={user} onOpen={onEvaluation}/></div>}{editable && i.status === 'scheduled' && <div className="interview-row-actions"><button className="button secondary small-button" onClick={() => void update(i,'completed')}><Check size={15}/>{t("Hoàn thành")}</button><button className="icon-button" aria-label={t("Hủy lịch {p0}",{p0:i.candidate_name})} onClick={() => void update(i,'cancelled')}><X size={17}/></button></div>}</article>)}</section></>;
+  const [filter, setFilter] = useState('scheduled');
+  const [completionPeriod, setCompletionPeriod] = useState('all');
+  const [completionDay, setCompletionDay] = useState(dayKey);
+  const today = dayKey();
+  const firstRecentDay = dayKey(new Date(Date.now() - 6 * 24 * 60 * 60 * 1000));
+  const visible = interviews.filter(interview => filter === 'all' || interview.status === filter);
+  const completedOnly = filter === 'completed';
+  const filterByDate = completedOnly && completionPeriod !== 'all';
+  const rows = completedOnly ? visible.filter(interview => {
+    if (!filterByDate) return true;
+    if (!interview.completed_at) return false;
+    const completedDay = dayKey(interview.completed_at);
+    return completionPeriod === '7' ? completedDay >= firstRecentDay && completedDay <= today : completedDay === completionDay;
+  }).sort(compareCompletionTime) : visible;
+
+  async function update(interview: Interview, status: string) {
+    if (status === 'cancelled' && !window.confirm(t('Bạn muốn hủy lịch phỏng vấn này?'))) return;
+    try {
+      await api(`/interviews/${interview.id}`, { method: 'PATCH', body: json({ status }) });
+      onRefresh();
+      notify('Đã cập nhật lịch phỏng vấn.');
+    } catch (err) { notify(errorMessage(err)); }
+  }
+
+  return <>
+    <PageHeading title={t('Lịch phỏng vấn')} subtitle={t('Lịch đã đặt, đã hoàn thành và đã hủy · UTC+7.')} actions={editable &&
+      <button className="button primary" onClick={onAdd}><Plus size={17}/>{t('Đặt lịch phỏng vấn')}</button>}/>
+    <section className="panel interview-panel">
+      <div className="list-top">
+        <div className="list-tabs">
+          {([['scheduled', 'Đã lên lịch'], ['completed', 'Đã hoàn thành'], ['cancelled', 'Đã hủy'], ['all', 'Tất cả']]).map(([value, label]) =>
+            <button className={filter === value ? 'active' : ''} onClick={() => setFilter(value)} key={value}>{t(label)}</button>)}
+        </div>
+      </div>
+      {completedOnly && <div className="interview-completion-filters">
+        <Field label="Lọc theo ngày hoàn thành"><select value={completionPeriod} onChange={event => setCompletionPeriod(event.target.value)}>
+          <option value="all">{t('Toàn bộ thời gian')}</option>
+          <option value="7">{t('7 ngày qua')}</option>
+          <option value="day">{t('Tùy chọn ngày')}</option>
+        </select></Field>
+        {completionPeriod === 'day' && <Field label="Ngày hoàn thành">
+          <input type="date" value={completionDay} max={today} onChange={event => setCompletionDay(event.target.value)}/>
+        </Field>}
+      </div>}
+      {!rows.length && (filterByDate ? <Empty title={t('Không có lịch hoàn thành trong thời gian đã chọn')} icon={<CalendarDays size={26}/>}/> :
+        <Empty title={t('Chưa có lịch trong nhóm này')} icon={<CalendarDays size={26}/>}>{t('Lịch mới sẽ xuất hiện tại đây sau khi HR tạo.')}</Empty>)}
+      {rows.map(interview => <article className="interview-list-row" key={interview.id}>
+        <div className="interview-date">
+          <strong>{new Date(interview.starts_at).toLocaleDateString('vi-VN', { day: '2-digit', timeZone: 'Asia/Bangkok' })}</strong>
+          <span>{t('Tháng ')}{new Date(interview.starts_at).toLocaleDateString('vi-VN', { month: '2-digit', timeZone: 'Asia/Bangkok' })}</span>
+        </div>
+        <div className="interview-time"><strong>{time(interview.starts_at)} – {time(interview.ends_at)}</strong><small>{interview.mode}</small></div>
+        <div className="interview-candidate">
+          <button onClick={() => onOpen(interview.candidate_id)}>{interview.candidate_name}</button>
+          <p>{interview.job_title}</p>
+          <small>{interview.interviewer_name} · {interview.location}</small>
+          {completedOnly && interview.completed_at && <small>{t('Hoàn thành lúc {time}', { time: date(interview.completed_at, true) })}</small>}
+        </div>
+        {interview.status === 'completed' && <div className="interview-evaluation-actions">
+          {interview.evaluation && <EvaluationBadge evaluation={interview.evaluation}/>}
+          <EvaluationButton interview={interview} user={user} onOpen={onEvaluation}/>
+        </div>}
+        {interview.cancellation_reason === 'no_show' && <span className="mini-tag">{t('Tự hủy · Không tham gia phỏng vấn')}</span>}
+        {editable && interview.status === 'scheduled' && <div className="interview-row-actions">
+          <button className="button secondary small-button" onClick={() => void update(interview, 'completed')}><Check size={15}/>{t('Hoàn thành')}</button>
+          <button className="icon-button" aria-label={t('Hủy lịch {p0}', { p0: interview.candidate_name })} onClick={() => void update(interview, 'cancelled')}><X size={17}/></button>
+        </div>}
+      </article>)}
+    </section>
+  </>;
 }
 
 function Login({ error: initialError, demo, needsSetup, onLogin }: { error: string; demo: boolean; needsSetup: boolean; onLogin: (u: User) => void }) {

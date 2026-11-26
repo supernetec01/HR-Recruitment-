@@ -25,7 +25,9 @@ export const STAGES: Record<string, { label: string; color: string }> = {
   new: { label: 'Mới tiếp nhận', color: 'blue' }, screening: { label: 'Đang sàng lọc', color: 'purple' },
   contacted: { label: 'Đã liên hệ', color: 'teal' }, scheduled: { label: 'Chờ phỏng vấn', color: 'amber' },
   interview_requested: { label: 'Hẹn phỏng vấn', color: 'cyan' },
-  interviewed: { label: 'Đã phỏng vấn', color: 'purple' }, review: { label: 'Chờ đánh giá', color: 'amber' },
+  interviewed: { label: 'Đã phỏng vấn', color: 'purple' },
+  no_show: { label: 'Không tham gia phỏng vấn', color: 'gray' },
+  review: { label: 'Chờ đánh giá', color: 'amber' },
   offered: { label: 'Đã gửi offer', color: 'teal' }, hired: { label: 'Đã tuyển dụng', color: 'green' }, rejected: { label: 'Không phù hợp', color: 'gray' },
 };
 export const date = (value: string, withTime = false) => new Intl.DateTimeFormat(getLanguage() === 'zh-CN' ? 'zh-CN' : 'vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', ...(withTime ? { hour: '2-digit', minute: '2-digit' } : {}), timeZone: 'Asia/Bangkok' }).format(new Date(value));
